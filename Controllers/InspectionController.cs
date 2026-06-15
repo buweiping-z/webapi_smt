@@ -186,89 +186,96 @@ namespace webapi.Controllers
             }
         }
 
-        // 4. 保存点检记录
+        // 4. 保存点检记录（事务 + 批量 upsert 优化版）
         [HttpPost("records/save")]
         public async Task<IActionResult> SaveDailyRecord([FromBody] SaveDailyRecordRequest request)
         {
             try
             {
                 var inspectionDate = request.InspectionMonth;
+                var employeeId = string.IsNullOrEmpty(request.EmployeeId) ? "web" : request.EmployeeId;
+                var frequency = "日";
 
-                foreach (var item in request.Results)
+                // 收集所有周期键
+                var periodKeys = request.Results
+                    .Select(item => $"{inspectionDate.Year:0000}-{inspectionDate.Month:00}-{item.Day:00}")
+                    .Distinct()
+                    .ToList();
+
+                using var transaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    // 转换前端传来的值：○ → 正常，× → 异常
-                    string saveValue = item.ResultValue;
-                    if (saveValue == "○")
-                        saveValue = "正常";
-                    else if (saveValue == "×")
-                        saveValue = "异常";
-
-                    // 构造周期键（旧 Web 前端默认日检）
-                    var periodKey = $"{inspectionDate.Year:0000}-{inspectionDate.Month:00}-{item.Day:00}";
-                    var frequency = "日";
-
-                    // 查找是否已有记录
-                    var existingRecord = await _context.InspectionRecords
+                    // ===== 批量查询：查出所有已有的 records =====
+                    var existingRecords = await _context.InspectionRecords
                         .AsTracking()
-                        .FirstOrDefaultAsync(r => r.DeviceModel == request.DeviceModel
-                            && r.Frequency == frequency
-                            && r.PeriodKey == periodKey);
+                        .Where(r => r.DeviceModel == request.DeviceModel
+                                    && r.Frequency == frequency
+                                    && periodKeys.Contains(r.PeriodKey))
+                        .ToListAsync();
 
-                    if (existingRecord != null)
+                    var existingRecordMap = existingRecords
+                        .ToDictionary(r => r.PeriodKey);
+
+                    // 补齐缺失的 records
+                    foreach (var periodKey in periodKeys)
                     {
-                        // 更新已有记录
-                        var existingResult = await _context.InspectionResults
-                            .AsTracking()
-                            .FirstOrDefaultAsync(res => res.RecordId == existingRecord.Id && res.ItemName == item.ItemName);
+                        if (!existingRecordMap.ContainsKey(periodKey))
+                        {
+                            var dayItem = request.Results.FirstOrDefault(r =>
+                                $"{inspectionDate.Year:0000}-{inspectionDate.Month:00}-{r.Day:00}" == periodKey);
+                            var day = dayItem?.Day ?? 1;
 
-                        if (existingResult != null)
-                        {
-                            existingResult.ResultValue = saveValue;
-                            existingResult.Remark = item.Remark;
-                            existingResult.IsNormal = (saveValue == "正常");
-                        }
-                        else
-                        {
-                            _context.InspectionResults.Add(new InspectionResult
+                            var newRecord = new InspectionRecord
                             {
-                                RecordId = existingRecord.Id,
-                                ItemName = item.ItemName,
-                                ResultValue = saveValue,
-                                IsNormal = (saveValue == "正常"),
-                                Remark = item.Remark
-                            });
+                                EmployeeId = employeeId,
+                                DeviceModel = request.DeviceModel,
+                                DeviceName = request.DeviceModel,
+                                InspectionTime = new DateTime(inspectionDate.Year, inspectionDate.Month, day),
+                                Status = "submitted",
+                                ResultsJson = "",
+                                Frequency = frequency,
+                                PeriodKey = periodKey
+                            };
+                            _context.InspectionRecords.Add(newRecord);
+                            await _context.SaveChangesAsync();
+                            existingRecordMap[periodKey] = newRecord;
                         }
                     }
-                    else
+
+                    // ===== 批量 upsert results =====
+                    var upsertSql = @"
+                INSERT INTO inspection_results (record_id, item_name, result_value, is_normal, remark)
+                VALUES ({0}, {1}, {2}, {3}, {4})
+                ON DUPLICATE KEY UPDATE
+                    result_value = VALUES(result_value),
+                    is_normal = VALUES(is_normal),
+                    remark = VALUES(remark)";
+
+                    foreach (var item in request.Results)
                     {
-                        // 创建新记录
-                        var newRecord = new InspectionRecord
-                        {
-                            EmployeeId = string.IsNullOrEmpty(request.EmployeeId) ? "web" : request.EmployeeId,
-                            DeviceModel = request.DeviceModel,
-                            DeviceName = request.DeviceModel,
-                            InspectionTime = new DateTime(inspectionDate.Year, inspectionDate.Month, item.Day),
-                            Status = "submitted",
-                            ResultsJson = "",
-                            Frequency = frequency,
-                            PeriodKey = periodKey
-                        };
-                        _context.InspectionRecords.Add(newRecord);
-                        await _context.SaveChangesAsync();
+                        // 转换前端传来的值：○ → 正常，× → 异常
+                        string saveValue = item.ResultValue;
+                        if (saveValue == "○")
+                            saveValue = "正常";
+                        else if (saveValue == "×")
+                            saveValue = "异常";
 
-                        _context.InspectionResults.Add(new InspectionResult
-                        {
-                            RecordId = newRecord.Id,
-                            ItemName = item.ItemName,
-                            ResultValue = saveValue,
-                            IsNormal = (saveValue == "正常"),
-                            Remark = item.Remark
-                        });
+                        var periodKey = $"{inspectionDate.Year:0000}-{inspectionDate.Month:00}-{item.Day:00}";
+                        if (!existingRecordMap.TryGetValue(periodKey, out var record))
+                            continue;
+
+                        await _context.Database.ExecuteSqlRawAsync(upsertSql,
+                            record.Id, item.ItemName, saveValue, saveValue == "正常", item.Remark);
                     }
-                }
 
-                await _context.SaveChangesAsync();
-                return Ok(new { success = true, message = "保存成功" });
+                    await transaction.CommitAsync();
+                    return Ok(new { success = true, message = "保存成功" });
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
             }
             catch (Exception ex)
             {
