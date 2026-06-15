@@ -521,38 +521,48 @@ namespace webapi.Controllers
             });
         }
 
-        // 18. 获取指定设备+年月的每日点检者姓
+        // 18. 获取指定设备+年月的每日点检者姓（窗口函数优化版）
         [HttpGet("operators/daily")]
         public async Task<IActionResult> GetDailyOperators(string deviceModel, int year, int month)
         {
             var startDate = new DateTime(year, month, 1);
             var endDate = startDate.AddMonths(1).AddDays(-1);
 
-            // 查询该设备当月所有记录，按日分组取最新记录的 employee_id
-            var records = await _context.InspectionRecords
-                .Where(r => r.DeviceModel == deviceModel
-                    && r.InspectionTime >= startDate
-                    && r.InspectionTime <= endDate)
+            // 用 ROW_NUMBER() 窗口函数在数据库端按日分组取最新记录
+            var sql = @"
+                SELECT day, employee_id FROM (
+                    SELECT
+                        DAY(inspection_time) as day,
+                        employee_id,
+                        ROW_NUMBER() OVER (PARTITION BY DAY(inspection_time) ORDER BY inspection_time DESC) as rn
+                    FROM inspection_records
+                    WHERE device_model = {0}
+                        AND inspection_time >= {1}
+                        AND inspection_time <= {2}
+                ) t WHERE rn = 1";
+
+            var dailyRecords = await _context.Database
+                .SqlQueryRaw<DailyOperatorRaw>(sql, deviceModel, startDate, endDate)
                 .ToListAsync();
 
-            // 按日分组，取每天最新记录
-            var dailyLatest = records
-                .GroupBy(r => r.InspectionTime.Day)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.OrderByDescending(r => r.InspectionTime).First().EmployeeId
-                );
-
             // JOIN qualified_inspectors 获取姓
-            var employeeIds = dailyLatest.Values.Distinct().ToList();
-            var inspectors = await _context.QualifiedInspectors
-                .Where(o => employeeIds.Contains(o.EmployeeId))
-                .ToDictionaryAsync(o => o.EmployeeId, o => o.LastName);
+            var employeeIds = dailyRecords.Select(r => r.EmployeeId).Distinct().ToList();
+            Dictionary<string, string> inspectors;
+            if (employeeIds.Count > 0)
+            {
+                inspectors = await _context.QualifiedInspectors
+                    .Where(o => employeeIds.Contains(o.EmployeeId))
+                    .ToDictionaryAsync(o => o.EmployeeId, o => o.LastName);
+            }
+            else
+            {
+                inspectors = new Dictionary<string, string>();
+            }
 
             var result = new Dictionary<string, string>();
-            foreach (var kvp in dailyLatest)
+            foreach (var dr in dailyRecords)
             {
-                result[kvp.Key.ToString()] = inspectors.TryGetValue(kvp.Value, out var name) ? name : "";
+                result[dr.Day.ToString()] = inspectors.TryGetValue(dr.EmployeeId, out var name) ? name : "";
             }
 
             return Ok(new
@@ -1217,6 +1227,13 @@ namespace webapi.Controllers
 
         /// <summary>更新的 inspection_templates 条数</summary>
         public int TemplatesUpdated { get; set; }
+    }
+
+    // 用于 SqlQueryRaw 的临时映射类
+    public class DailyOperatorRaw
+    {
+        public int Day { get; set; }
+        public string EmployeeId { get; set; } = string.Empty;
     }
 
 }
