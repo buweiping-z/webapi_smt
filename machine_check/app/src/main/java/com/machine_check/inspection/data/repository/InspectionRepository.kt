@@ -16,14 +16,33 @@ import com.machine_check.inspection.data.network.RetrofitClient
 class InspectionRepository(
     private val api: ApiService = RetrofitClient.apiService
 ) {
+    // 模板缓存：key = "deviceModel:frequency", value = cached result
+    private val templateCache = java.util.concurrent.ConcurrentHashMap<String, CacheEntry<List<InspectionTemplate>>>()
 
-    /** 获取指定设备型号的点检模板列表 */
+    private data class CacheEntry<T>(
+        val data: T,
+        val timestamp: Long = System.currentTimeMillis()
+    ) {
+        fun isExpired(ttlMs: Long = 5 * 60 * 1000): Boolean =  // 5 分钟过期
+            System.currentTimeMillis() - timestamp > ttlMs
+    }
+
+    /** 获取指定设备型号的点检模板列表（带内存缓存，5 分钟过期） */
     suspend fun getTemplates(deviceModel: String, frequency: String = "日"): Result<List<InspectionTemplate>> {
+        val cacheKey = "$deviceModel:$frequency"
+
+        // 命中缓存且未过期
+        val cached = templateCache[cacheKey]
+        if (cached != null && !cached.isExpired()) {
+            return Result.success(cached.data)
+        }
+
         return try {
             val response = api.getTemplates(deviceModel, frequency)
             if (response.isSuccessful) {
                 val body = response.body()
                 if (body != null) {
+                    templateCache[cacheKey] = CacheEntry(body)
                     Result.success(body)
                 } else {
                     Result.failure(
@@ -31,13 +50,17 @@ class InspectionRepository(
                     )
                 }
             } else {
-                // TODO: 考虑使用自定义异常类型替代 Exception
                 Result.failure(
                     Exception("获取模板失败: ${response.code()} ${response.message()}")
                 )
             }
         } catch (e: Exception) {
-            Result.failure(Exception("网络连接失败，请检查网络设置", e))
+            // 网络失败时尝试返回过期缓存
+            if (cached != null) {
+                Result.success(cached.data)
+            } else {
+                Result.failure(Exception("网络连接失败，请检查网络设置", e))
+            }
         }
     }
 
