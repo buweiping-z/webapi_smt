@@ -161,7 +161,7 @@ private fun InspectionForm(
         ) {
             itemsIndexed(
                 items = state.items,
-                key = { index, _ -> index }
+                key = { _, item -> item.template.id }
             ) { index, itemState ->
                 InspectionItemCard(
                     itemState = itemState,

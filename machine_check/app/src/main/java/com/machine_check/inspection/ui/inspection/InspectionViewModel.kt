@@ -49,9 +49,9 @@ sealed interface InspectionUiState {
 /**
  * 点检页面 ViewModel
  */
-class InspectionViewModel : ViewModel() {
-
-    private val repository = InspectionRepository()
+class InspectionViewModel(
+    private val repository: InspectionRepository = InspectionRepository()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow<InspectionUiState>(InspectionUiState.Loading)
     val uiState: StateFlow<InspectionUiState> = _uiState.asStateFlow()

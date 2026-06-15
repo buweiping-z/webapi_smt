@@ -44,10 +44,11 @@ enum class ScanTarget {
 /**
  * 扫码页面 ViewModel
  */
-class ScanViewModel(application: Application) : AndroidViewModel(application) {
-
-    private val preferencesManager = PreferencesManager(application)
-    private val repository = InspectionRepository()
+class ScanViewModel(
+    application: Application,
+    private val preferencesManager: PreferencesManager = PreferencesManager(application),
+    private val repository: InspectionRepository = InspectionRepository()
+) : AndroidViewModel(application) {
     private var freqCheckJob: Job? = null
 
     private val _uiState = MutableStateFlow(ScanUiState())
