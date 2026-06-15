@@ -1597,7 +1597,7 @@
         async function loadUsers() {
             try {
                 const response = await axios.get(`${API_BASE_URL}/api/Inspection/users/list`);
-                const users = response.data;
+                const users = response.data.items || response.data;
                 const select = document.getElementById('usernameSelect');
                 select.innerHTML = '<option value="">请选择姓名</option>';
 
@@ -1619,7 +1619,8 @@
                 const select = document.getElementById('inspectorSelect');
                 // 保留第一个"选择点检者"选项
                 select.innerHTML = '<option value="">选择点检者</option>';
-                response.data.forEach(op => {
+                const operators = response.data.items || response.data;
+                operators.forEach(op => {
                     const option = document.createElement('option');
                     option.value = op.employeeId;
                     option.textContent = `${op.lastName} (${op.employeeId})`;
@@ -1651,7 +1652,7 @@
                     params: { deviceModel, year, month }
                 });
                 console.log('API返回的记录:', response.data);
-                return response.data;
+                return response.data.items || response.data;
             } catch (error) {
                 console.error('加载记录失败:', error);
                 return [];
