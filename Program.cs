@@ -2,13 +2,15 @@ using Microsoft.EntityFrameworkCore;
 using Pomelo.EntityFrameworkCore.MySql;
 using webapi.Data;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    // 静态文件根目录设为 html（而非默认的 wwwroot）
+    WebRootPath = "html"
+});
 
 // 固定监听地址（生产环境无 launchSettings.json 时默认 5000，这里统一为 5039）
 builder.WebHost.UseUrls("http://0.0.0.0:5039");
-
-// 静态文件根目录设为 html（而非默认的 wwwroot）
-builder.WebHost.UseWebRoot(Path.Combine(builder.Environment.ContentRootPath, "html"));
 
 // 1. 配置 CORS 策略 (放在 AddDbContext 之前或之后都可以)
 builder.Services.AddCors(options =>
