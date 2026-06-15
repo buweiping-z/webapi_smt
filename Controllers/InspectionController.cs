@@ -145,15 +145,16 @@ namespace webapi.Controllers
         }
 
         [HttpGet("records/monthly")]
-        public async Task<IActionResult> GetMonthlyRecords(string deviceModel, int year, int month)
+        public async Task<IActionResult> GetMonthlyRecords(
+            string deviceModel, int year, int month,
+            int page = 1, int pageSize = 100)
         {
             try
             {
                 var startDate = new DateTime(year, month, 1);
                 var endDate = startDate.AddMonths(1).AddDays(-1);
 
-                // 使用具体类 MonthlyRecordDto
-                var records = await (
+                var query =
                     from r in _context.InspectionRecords
                     join res in _context.InspectionResults on r.Id equals res.RecordId
                     where r.DeviceModel == deviceModel
@@ -166,8 +167,16 @@ namespace webapi.Controllers
                         ResultValue = res.ResultValue,
                         Remark = res.Remark,
                         IsNormal = res.IsNormal
-                    }
-                ).ToListAsync();
+                    };
+
+                var totalCount = await query.CountAsync();
+
+                var records = await query
+                    .OrderByDescending(r => r.InspectionDay)
+                    .ThenByDescending(r => r.ItemName)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync();
 
                 // 转换结果值：正常 → ○，异常 → ×
                 foreach (var record in records)
@@ -178,7 +187,13 @@ namespace webapi.Controllers
                         record.ResultValue = "×";
                 }
 
-                return Ok(records);
+                return Ok(new PagedResponse<MonthlyRecordDto>
+                {
+                    Items = records,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount
+                });
             }
             catch (Exception ex)
             {
@@ -359,15 +374,28 @@ namespace webapi.Controllers
             }
         }
 
-        // 7. 获取用户列表（用于下拉菜单）
+        // 7. 获取用户列表（用于下拉菜单），支持分页
         [HttpGet("users/list")]
-        public async Task<IActionResult> GetUserList()
+        public async Task<IActionResult> GetUserList(int page = 1, int pageSize = 100)
         {
-            var users = await _context.InspectionUsers
-                .Select(u => new { u.Username, u.FullName, u.Role })
+            var query = _context.InspectionUsers
+                .Select(u => new { u.Username, u.FullName, u.Role });
+
+            var totalCount = await query.CountAsync();
+
+            var users = await query
+                .OrderBy(u => u.Username)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            return Ok(users);
+            return Ok(new PagedResponse<object>
+            {
+                Items = users.Cast<object>().ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            });
         }
 
         // 8. 用户登录验证
@@ -440,15 +468,28 @@ namespace webapi.Controllers
             }
         }
 
-        // 14. 获取点检资格人员列表
+        // 14. 获取点检资格人员列表，支持分页
         [HttpGet("operators/list")]
-        public async Task<IActionResult> GetOperatorList()
+        public async Task<IActionResult> GetOperatorList(int page = 1, int pageSize = 100)
         {
-            var operators = await _context.QualifiedInspectors
-                .Select(o => new { o.EmployeeId, o.LastName })
+            var query = _context.QualifiedInspectors
+                .Select(o => new { o.EmployeeId, o.LastName });
+
+            var totalCount = await query.CountAsync();
+
+            var operators = await query
+                .OrderBy(o => o.EmployeeId)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            return Ok(operators);
+            return Ok(new PagedResponse<object>
+            {
+                Items = operators.Cast<object>().ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            });
         }
 
         // 15. 新增点检资格人员（支持单个/批量）
