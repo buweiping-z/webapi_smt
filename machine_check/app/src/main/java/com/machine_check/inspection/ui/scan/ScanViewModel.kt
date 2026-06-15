@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -46,6 +48,7 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
 
     private val preferencesManager = PreferencesManager(application)
     private val repository = InspectionRepository()
+    private var freqCheckJob: Job? = null
 
     private val _uiState = MutableStateFlow(ScanUiState())
     val uiState: StateFlow<ScanUiState> = _uiState.asStateFlow()
@@ -211,11 +214,18 @@ class ScanViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /** 查询设备各频率的可用状态 */
+    /** 查询设备各频率的可用状态（300ms 防抖 + 自动取消前一个请求） */
     private fun checkFrequenciesAvailable(deviceModel: String) {
         if (deviceModel.isBlank()) return
-        _uiState.update { it.copy(isCheckingFrequencies = true) }
-        viewModelScope.launch {
+
+        // 取消前一个未完成的请求
+        freqCheckJob?.cancel()
+
+        freqCheckJob = viewModelScope.launch {
+            // 300ms 防抖：等待用户停止输入
+            delay(300)
+
+            _uiState.update { it.copy(isCheckingFrequencies = true) }
             repository.getFrequenciesAvailable(deviceModel).fold(
                 onSuccess = { result ->
                     _uiState.update {
