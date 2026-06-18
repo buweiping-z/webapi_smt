@@ -152,7 +152,7 @@ namespace webapi.Controllers
             try
             {
                 var startDate = new DateTime(year, month, 1);
-                var endDate = startDate.AddMonths(1).AddDays(-1);
+                var endDate = startDate.AddMonths(1).AddTicks(-1);
 
                 var query =
                     from r in _context.InspectionRecords
@@ -567,11 +567,13 @@ namespace webapi.Controllers
         public async Task<IActionResult> GetDailyOperators(string deviceModel, int year, int month)
         {
             var startDate = new DateTime(year, month, 1);
-            var endDate = startDate.AddMonths(1).AddDays(-1);
+            var endDate = startDate.AddMonths(1).AddTicks(-1);
 
             // 用 ROW_NUMBER() 窗口函数在数据库端按日分组取最新记录
+            // 注意：列别名必须与 DailyOperatorRaw 属性名大小写一致，
+            // SqlQueryRaw 不做 snake_case→PascalCase 转换，只做大小写不敏感精确匹配
             var sql = @"
-                SELECT day, employee_id FROM (
+                SELECT day AS Day, employee_id AS EmployeeId FROM (
                     SELECT
                         DAY(inspection_time) as day,
                         employee_id,
@@ -758,13 +760,144 @@ namespace webapi.Controllers
         public async Task<IActionResult> GetFrequencySummary(int year, int month)
         {
             var startDate = new DateTime(year, month, 1);
-            var endDate = startDate.AddMonths(1).AddDays(-1);
+            var endDate = startDate.AddMonths(1).AddTicks(-1);
 
             var daily   = await BuildFrequencyStats("日", year, month, startDate, endDate);
             var weekly  = await BuildFrequencyStats("周", year, month, startDate, endDate);
             var monthly = await BuildFrequencyStats("月", year, month, startDate, endDate);
 
             return Ok(new { daily, weekly, monthly });
+        }
+
+        // 13b. 获取未点检的必须点检设备 location 列表（供手机端使用）
+        /// <summary>
+        /// 按日/周/月频率，返回当前周期内未点检的"必须点检"设备的 device_location，
+        /// 合并为一个列表，每条标注频率。手机端在工号验证通过后及点检提交返回后调用。
+        /// </summary>
+        [HttpGet("uninspected-mandatory-locations")]
+        public async Task<IActionResult> GetUninspectedMandatoryLocations()
+        {
+            var now = DateTime.Now;
+            var today = now.Date;
+
+            // 日检周期：当天
+            var dayStart = today;
+            var dayEnd = today.AddDays(1).AddTicks(-1);
+
+            // 周检周期：本周一 ~ 本周日
+            int dayOfWeek = (int)now.DayOfWeek;
+            int diff = dayOfWeek == 0 ? 6 : dayOfWeek - 1;
+            var monday = today.AddDays(-diff);
+            var sunday = monday.AddDays(7).AddTicks(-1);
+
+            // 月检周期：当月 1 日 ~ 月末
+            var monthStart = new DateTime(now.Year, now.Month, 1);
+            var monthEnd = monthStart.AddMonths(1).AddTicks(-1);
+
+            var uninspectedList = new List<object>();
+            var abnormalList = new List<object>();
+
+            async Task CollectData(string frequency, string label, DateTime periodStart, DateTime periodEnd)
+            {
+                // ===== 未点检：必须点检设备中无任何记录的 =====
+                var mandatoryModels = await _context.InspectionTemplates
+                    .Where(t => t.Frequency == frequency && t.IsMandatory)
+                    .Select(t => t.DeviceModel)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (mandatoryModels.Count > 0)
+                {
+                    var inspectedModels = await _context.InspectionRecords
+                        .Where(r => mandatoryModels.Contains(r.DeviceModel)
+                                    && r.Frequency == frequency
+                                    && r.InspectionTime >= periodStart
+                                    && r.InspectionTime <= periodEnd)
+                        .Select(r => r.DeviceModel)
+                        .Distinct()
+                        .ToListAsync();
+
+                    var inspectedSet = new HashSet<string>(inspectedModels);
+                    var uninspectedModels = mandatoryModels
+                        .Where(m => !inspectedSet.Contains(m))
+                        .ToList();
+
+                    if (uninspectedModels.Count > 0)
+                    {
+                        var locations = await _context.Devices
+                            .Where(d => uninspectedModels.Contains(d.DeviceModel)
+                                        && d.DeviceLocation != null
+                                        && d.DeviceLocation != "")
+                            .Select(d => d.DeviceLocation!)
+                            .Distinct()
+                            .ToListAsync();
+
+                        foreach (var loc in locations)
+                            uninspectedList.Add(new { frequency = label, location = loc });
+                    }
+                }
+
+                // ===== 异常点检：全部设备（必须+选择）中有异常结果的 =====
+                var allDeviceModels = await _context.InspectionTemplates
+                    .Where(t => t.Frequency == frequency)
+                    .Select(t => t.DeviceModel)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (allDeviceModels.Count > 0)
+                {
+                    var records = await _context.InspectionRecords
+                        .Where(r => allDeviceModels.Contains(r.DeviceModel)
+                                    && r.Frequency == frequency
+                                    && r.InspectionTime >= periodStart
+                                    && r.InspectionTime <= periodEnd)
+                        .ToListAsync();
+
+                    if (records.Count > 0)
+                    {
+                        var recordIds = records.Select(r => r.Id).ToList();
+                        var abnormalRecordIds = new HashSet<int>();
+                        const int batchSize = 500;
+                        for (int i = 0; i < recordIds.Count; i += batchSize)
+                        {
+                            var batch = recordIds.Skip(i).Take(batchSize).ToList();
+                            var abnormalIds = await _context.InspectionResults
+                                .Where(res => batch.Contains(res.RecordId) && !res.IsNormal)
+                                .Select(res => res.RecordId)
+                                .Distinct()
+                                .ToListAsync();
+                            foreach (var id in abnormalIds)
+                                abnormalRecordIds.Add(id);
+                        }
+
+                        if (abnormalRecordIds.Count > 0)
+                        {
+                            var abnormalModels = records
+                                .Where(r => abnormalRecordIds.Contains(r.Id))
+                                .Select(r => r.DeviceModel)
+                                .Distinct()
+                                .ToList();
+
+                            var locations = await _context.Devices
+                                .Where(d => abnormalModels.Contains(d.DeviceModel)
+                                            && d.DeviceLocation != null
+                                            && d.DeviceLocation != "")
+                                .Select(d => d.DeviceLocation!)
+                                .Distinct()
+                                .ToListAsync();
+
+                            foreach (var loc in locations)
+                                abnormalList.Add(new { frequency = label, location = loc });
+                        }
+                    }
+                }
+            }
+
+            await CollectData("日", "日检", dayStart, dayEnd);
+            await CollectData("周", "周检", monday, sunday);
+            await CollectData("月", "月检", monthStart, monthEnd);
+
+            return Ok(new { uninspectedList, abnormalList });
         }
 
         /// <summary>
@@ -828,16 +961,21 @@ namespace webapi.Controllers
                 periodEnd = endDate;
             }
 
-            // ===== 批量查询 1：所有设备的必须点检项目（一次 SQL） =====
-            var allMandatoryItems = await _context.InspectionTemplates
+            // ===== 批量查询 1：所有设备的全部点检项目（一次 SQL，含 IsMandatory 标记） =====
+            var allItems = await _context.InspectionTemplates
                 .Where(t => devices.Contains(t.DeviceModel)
-                            && t.Frequency == frequency
-                            && t.IsMandatory)
-                .Select(t => new { t.DeviceModel, t.ItemName })
+                            && t.Frequency == frequency)
+                .Select(t => new { t.DeviceModel, t.ItemName, t.IsMandatory })
                 .ToListAsync();
 
-            // 按设备分组
-            var mandatoryByDevice = allMandatoryItems
+            // 按设备分组 — 全部项目
+            var allItemsByDevice = allItems
+                .GroupBy(t => t.DeviceModel)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            // 按设备分组 — 仅必须项目
+            var mandatoryByDevice = allItems
+                .Where(t => t.IsMandatory)
                 .GroupBy(t => t.DeviceModel)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.ItemName).ToHashSet());
 
@@ -889,18 +1027,22 @@ namespace webapi.Controllers
 
             foreach (var device in devices)
             {
-                // 获取该设备必须点检的项目名集合
-                if (!mandatoryByDevice.TryGetValue(device, out var mandatorySet) || mandatorySet.Count == 0)
+                // 获取该设备的全部项目（含必须+选择）
+                if (!allItemsByDevice.TryGetValue(device, out var deviceAllItems) || deviceAllItems.Count == 0)
                     continue;
+
+                bool hasMandatory = mandatoryByDevice.TryGetValue(device, out var mandatorySet) && mandatorySet.Count > 0;
 
                 // 获取该设备在周期内的记录
                 if (!recordsByDevice.TryGetValue(device, out var deviceRecords) || deviceRecords.Count == 0)
                 {
-                    uninspectedDevices.Add(device);
+                    // 必须点检设备无记录 → 未点检；纯选择点检设备无记录 → 不统计
+                    if (hasMandatory)
+                        uninspectedDevices.Add(device);
                     continue;
                 }
 
-                // 收集本周期所有记录的 result item_name
+                // 收集本周期所有记录的 result item_name + 异常标记
                 var deviceResultItemNames = new HashSet<string>();
                 var anyAbnormal = false;
                 foreach (var record in deviceRecords)
@@ -915,20 +1057,26 @@ namespace webapi.Controllers
                     }
                 }
 
-                // 检查是否所有必须点检项目都有结果
-                var allMandatoryInspected = mandatorySet.All(item => deviceResultItemNames.Contains(item));
-
-                if (!allMandatoryInspected)
-                {
-                    uninspectedDevices.Add(device);
-                }
-                else if (anyAbnormal)
+                // 异常检查 — 所有设备（必须+选择）都计入异常
+                if (anyAbnormal)
                 {
                     abnormalCount++;
                     abnormalDeviceModels.Add(device);
+                    continue;
+                }
+
+                if (hasMandatory)
+                {
+                    // 必须点检设备：检查是否所有必须项都已覆盖
+                    var allMandatoryInspected = mandatorySet.All(item => deviceResultItemNames.Contains(item));
+                    if (!allMandatoryInspected)
+                        uninspectedDevices.Add(device);
+                    else
+                        inspectedCount++;
                 }
                 else
                 {
+                    // 纯选择点检设备，有记录且无异常 → 计入已点检
                     inspectedCount++;
                 }
             }
@@ -953,7 +1101,7 @@ namespace webapi.Controllers
             try
             {
                 var startDate = new DateTime(year, month, 1);
-                var endDate = startDate.AddMonths(1).AddDays(-1);
+                var endDate = startDate.AddMonths(1).AddTicks(-1);
 
                 // 所有设备型号（从模板表去重）
                 var allDevices = await _context.InspectionTemplates
@@ -1012,6 +1160,67 @@ namespace webapi.Controllers
             }
         }
 
+        // 获取当月完全未点检的设备清单（所有频率下均无记录）
+        [HttpGet("uninspected-monthly")]
+        public async Task<IActionResult> GetUninspectedMonthly(int year, int month)
+        {
+            try
+            {
+                var monthStart = new DateTime(year, month, 1);
+                var monthEnd = monthStart.AddMonths(1).AddTicks(-1);
+
+                // 所有有模板的设备型号
+                var allDeviceModels = await _context.InspectionTemplates
+                    .Select(t => t.DeviceModel)
+                    .Distinct()
+                    .ToListAsync();
+
+                // 当月有任意记录的设备型号
+                var inspectedModels = await _context.InspectionRecords
+                    .Where(r => r.InspectionTime >= monthStart
+                             && r.InspectionTime <= monthEnd)
+                    .Select(r => r.DeviceModel)
+                    .Distinct()
+                    .ToListAsync();
+
+                var inspectedSet = new HashSet<string>(inspectedModels);
+
+                // 当月完全无记录的设备
+                var uninspectedModels = allDeviceModels
+                    .Where(m => !inspectedSet.Contains(m))
+                    .ToList();
+
+                // JOIN devices 获取 location
+                var uninspectedDevices = new List<UninspectedDeviceItem>();
+                if (uninspectedModels.Count > 0)
+                {
+                    uninspectedDevices = await _context.Devices
+                        .Where(d => uninspectedModels.Contains(d.DeviceModel))
+                        .Select(d => new UninspectedDeviceItem
+                        {
+                            DeviceModel = d.DeviceModel,
+                            DeviceName = d.DeviceName,
+                            DeviceLocation = d.DeviceLocation ?? ""
+                        })
+                        .OrderBy(d => d.DeviceLocation)
+                        .ThenBy(d => d.DeviceModel)
+                        .ToListAsync();
+                }
+
+                return Ok(new UninspectedMonthlyResponse
+                {
+                    Year = year,
+                    Month = month,
+                    TotalDevices = allDeviceModels.Count,
+                    UninspectedCount = uninspectedModels.Count,
+                    UninspectedDevices = uninspectedDevices
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
 
         // 15. 导入计划：上传 Excel，提取机种编码，匹配 dongtai 设备并更新 is_mandatory
         /// <summary>
@@ -1275,6 +1484,22 @@ namespace webapi.Controllers
     {
         public int Day { get; set; }
         public string EmployeeId { get; set; } = string.Empty;
+    }
+
+    public class UninspectedMonthlyResponse
+    {
+        public int Year { get; set; }
+        public int Month { get; set; }
+        public int TotalDevices { get; set; }
+        public int UninspectedCount { get; set; }
+        public List<UninspectedDeviceItem> UninspectedDevices { get; set; } = new();
+    }
+
+    public class UninspectedDeviceItem
+    {
+        public string DeviceModel { get; set; } = string.Empty;
+        public string DeviceName { get; set; } = string.Empty;
+        public string DeviceLocation { get; set; } = string.Empty;
     }
 
 }
