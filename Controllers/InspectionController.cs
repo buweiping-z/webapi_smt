@@ -1212,7 +1212,7 @@ namespace webapi.Controllers
                     Year = year,
                     Month = month,
                     TotalDevices = allDeviceModels.Count,
-                    UninspectedCount = uninspectedModels.Count,
+                    UninspectedCount = uninspectedDevices.Count,
                     UninspectedDevices = uninspectedDevices
                 });
             }
