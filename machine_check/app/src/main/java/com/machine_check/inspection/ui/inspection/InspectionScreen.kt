@@ -13,13 +13,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 
 /**
  * 点检页面
@@ -273,7 +277,8 @@ private fun InspectionItemCard(
                         onValueChanged = onNumericValueChanged,
                         unit = template.unit,
                         normalMin = template.normalMin,
-                        normalMax = template.normalMax
+                        normalMax = template.normalMax,
+                        isOutOfRange = itemState.isOutOfRange
                     )
                 }
             }
@@ -282,9 +287,16 @@ private fun InspectionItemCard(
             OutlinedTextField(
                 value = itemState.remark,
                 onValueChange = onRemarkChanged,
-                label = { Text("备注（可选）") },
+                label = {
+                    if (itemState.remarkRequired) {
+                        Text("备注（必填）", color = MaterialTheme.colorScheme.error)
+                    } else {
+                        Text("备注（可选）")
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                isError = itemState.remarkRequired && itemState.remark.isBlank()
             )
         }
     }
@@ -353,23 +365,51 @@ private fun NumericInput(
     onValueChanged: (String) -> Unit,
     unit: String?,
     normalMin: Double?,
-    normalMax: Double?
+    normalMax: Double?,
+    isOutOfRange: Boolean = false
 ) {
     // 判断当前值是否在正常范围内
     val numericValue = value.toDoubleOrNull()
     val isInRange = when {
-        value.isBlank() -> null                      // 未输入，不显示颜色
-        numericValue == null -> false                // 无效数字
+        value.isBlank() -> null
+        numericValue == null -> false
+        isOutOfRange -> false
         normalMin != null && normalMax != null ->
             numericValue >= normalMin && numericValue <= normalMax
-        else -> true                                 // 无范围限制
+        else -> true
     }
 
-    val borderColor = when (isInRange) {
-        null -> MaterialTheme.colorScheme.outline    // 默认
-        true -> Color(0xFF4CAF50)                    // 绿色 - 正常
-        false -> Color(0xFFF44336)                   // 红色 - 异常
+    // 超范围闪烁状态
+    var flashCount by remember { mutableStateOf(0) }
+    var isFlashing by remember { mutableStateOf(false) }
+
+    // 检测到新超范围时触发闪烁
+    LaunchedEffect(isOutOfRange) {
+        if (isOutOfRange) {
+            flashCount = 0
+            isFlashing = true
+            repeat(6) {  // 3 次闪烁 = 6 次切换（红/透明）
+                flashCount++
+                delay(150)
+            }
+            isFlashing = false
+        }
     }
+
+    // 闪烁中的边框颜色：闪烁时红/透明交替，否则正常显示
+    val flashBorderColor = if (isFlashing && flashCount % 2 == 0) {
+        Color.Transparent
+    } else if (isOutOfRange) {
+        Color(0xFFF44336)
+    } else {
+        when (isInRange) {
+            null -> MaterialTheme.colorScheme.outline
+            true -> Color(0xFF4CAF50)
+            false -> Color(0xFFF44336)
+        }
+    }
+
+    val textColor = if (isOutOfRange) Color(0xFFF44336) else Color.Unspecified
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         OutlinedTextField(
@@ -390,13 +430,16 @@ private fun NumericInput(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            isError = isInRange == false,
-            supportingText = if (isInRange == false) {
+            isError = isOutOfRange,
+            supportingText = if (isOutOfRange) {
+                { Text("数值超出正常范围，将作为异常记录", color = Color(0xFFF44336)) }
+            } else if (isInRange == false) {
                 { Text("数值超出正常范围", color = Color(0xFFF44336)) }
             } else null,
+            textStyle = LocalTextStyle.current.copy(color = textColor),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = borderColor,
-                unfocusedBorderColor = borderColor
+                focusedBorderColor = flashBorderColor,
+                unfocusedBorderColor = flashBorderColor
             )
         )
     }
