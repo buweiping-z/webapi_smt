@@ -1197,6 +1197,71 @@
             .summary-card { padding: 8px 8px; min-width: 56px; }
             .summary-card .summary-value { font-size: 18px; }
         }
+
+        /* ============================================================
+           Uninspected Monthly Panel
+           ============================================================ */
+        #uninspectedMonthlyPanel {
+            margin: 12px 0;
+            padding: 18px 22px;
+            background: var(--danger-light);
+            border: 1px solid var(--danger-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-xs);
+        }
+
+        #uninspectedMonthlyPanel.all-clear {
+            background: var(--success-light);
+            border-color: var(--success-border);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-family: var(--font-heading);
+            font-size: 15px;
+            font-weight: 600;
+            color: #991B1B;
+        }
+
+        #uninspectedMonthlyPanel.all-clear .panel-header {
+            color: #065F46;
+        }
+
+        .uninspected-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .uninspected-table th {
+            background: rgba(239,68,68,0.08);
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 11px;
+            color: #991B1B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .uninspected-table td {
+            color: #7F1D1D;
+        }
+
+        /* mobile */
+        @media (max-width: 768px) {
+            #uninspectedMonthlyPanel {
+                padding: 12px 14px;
+            }
+            .uninspected-table {
+                font-size: 11px;
+            }
+            .uninspected-table th, .uninspected-table td {
+                padding: 5px 3px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1387,6 +1452,14 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Uninspected Monthly Panel -->
+            <div id="uninspectedMonthlyPanel" style="display:none;">
+                <div class="panel-header" id="uninspectedPanelHeader">
+                    ⚠️ 当月未点检设备
+                </div>
+                <div id="uninspectedPanelContent"></div>
+            </div>
         </div>
 
         <!-- Footer -->
@@ -1434,7 +1507,7 @@
     <script>
         // ==================== API 配置 ====================
         var API_SERVER_IP = '192.168.5.6';
-        var API_PORT = '5039';
+        var API_PORT = '8800';
         var API_BASE_URL = (function() {
             var h = window.location.hostname;
             var p = window.location.protocol;
@@ -1761,6 +1834,8 @@
                 fillFrequencyRow('weekly',  data.weekly);
                 fillFrequencyRow('monthly', data.monthly);
 
+                loadUninspectedMonthly();
+
             } catch (error) {
                 console.error('加载频率摘要失败:', error);
                 ['daily','weekly','monthly'].forEach(f => {
@@ -1784,6 +1859,53 @@
             var abnVal = document.getElementById(prefix + 'Abnormal');
             var abnormalNames = (stats.abnormalDeviceModels || []).join('、');
             abnVal.textContent = (stats.abnormalDevices || 0) + (abnormalNames ? ' [' + abnormalNames + ']' : '');
+        }
+
+        // 加载当月完全未点检的设备清单
+        async function loadUninspectedMonthly() {
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            if (!yearSelect || !monthSelect) return;
+
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+            if (!year || !month) return;
+
+            const panel = document.getElementById('uninspectedMonthlyPanel');
+            const header = document.getElementById('uninspectedPanelHeader');
+            const content = document.getElementById('uninspectedPanelContent');
+
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/uninspected-monthly`, {
+                    params: { year, month }
+                });
+                const data = response.data;
+
+                if (!panel) return;
+                panel.style.display = 'block';
+
+                if (data.uninspectedCount === 0) {
+                    panel.classList.add('all-clear');
+                    header.innerHTML = '✅ 当月所有设备均已点检';
+                    content.innerHTML = '';
+                } else {
+                    panel.classList.remove('all-clear');
+                    header.innerHTML = `⚠️ 当月未点检设备（共 ${data.uninspectedCount} 台）`;
+
+                    let html = '<div style="overflow-x:auto;"><table class="uninspected-table">';
+                    html += '<thead><tr><th style="min-width:120px;">设备名称</th><th style="min-width:200px;">所在位置</th></tr></thead>';
+                    html += '<tbody>';
+                    data.uninspectedDevices.forEach(d => {
+                        const loc = d.deviceLocation || '未配置位置';
+                        html += `<tr><td>${d.deviceModel}</td><td>${loc}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                    content.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('加载未点检设备清单失败:', error);
+                if (panel) panel.style.display = 'none';
+            }
         }
 
         function markUninspectedDevices(uninspectedSet) {
@@ -2219,10 +2341,19 @@
             }
 
             const html = `
-            <div style="font-family:'Microsoft YaHei',Arial,sans-serif;padding:10px;background:#fff;width:${capW}px;">
-                <h2 style="text-align:center;margin:0 0 10px;">设备治工具点检表</h2>
+            <div style="font-family:'Microsoft YaHei',Arial,sans-serif;padding:10px 10px;background:#fff;width:${capW}px;">
+                <!-- 标题行：附表一矩形框（左） + 设备治工具点检表标题（居中） -->
+                <div style="display:flex;align-items:center;margin:0 0 10px 0;">
+                    <div style="border:2.5px solid #333;padding:6px 14px;font-size:16px;font-weight:bold;flex-shrink:0;letter-spacing:2px;">附表一</div>
+                    <div style="flex:1;text-align:center;">
+                        <h2 style="margin:0;font-size:22px;">设备治工具点检表</h2>
+                    </div>
+                    <!-- 右侧占位，与左侧矩形框宽度对称，保证标题真正居中 -->
+                    <div style="width:82px;flex-shrink:0;"></div>
+                </div>
+                <!-- 设备信息 + 印章行 -->
                 <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;">
-                    <div style="font-size:18px;color:#333;margin-left:20px;">设备：${deviceName} ｜ ${currentYear}年${currentMonth}月</div>
+                    <div style="font-size:18px;color:#333;">设备：${deviceName} ｜ ${currentYear}年${currentMonth}月</div>
                     <div style="text-align:right;">
                         <span style="display:inline-block;text-align:center;margin:0 6px;font-size:10px;">
                             <div style="font-size:14px;color:#666;font-weight:bold;margin-bottom:2px;">承 认</div>
