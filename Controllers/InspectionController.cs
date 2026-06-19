@@ -318,11 +318,12 @@ namespace webapi.Controllers
             {
                 var inspectionDate = request.InspectionMonth;
                 var employeeId = string.IsNullOrEmpty(request.EmployeeId) ? "web" : request.EmployeeId;
-                var frequency = "日";
+                var frequency = string.IsNullOrEmpty(request.Frequency) ? "日" : request.Frequency;
 
                 // 收集所有周期键
                 var periodKeys = request.Results
-                    .Select(item => $"{inspectionDate.Year:0000}-{inspectionDate.Month:00}-{item.Day:00}")
+                    .Select(item => GeneratePeriodKey(frequency,
+                        new DateTime(inspectionDate.Year, inspectionDate.Month, item.Day)))
                     .Distinct()
                     .ToList();
 
@@ -346,7 +347,8 @@ namespace webapi.Controllers
                         if (!existingRecordMap.ContainsKey(periodKey))
                         {
                             var dayItem = request.Results.FirstOrDefault(r =>
-                                $"{inspectionDate.Year:0000}-{inspectionDate.Month:00}-{r.Day:00}" == periodKey);
+                                GeneratePeriodKey(frequency,
+                                    new DateTime(inspectionDate.Year, inspectionDate.Month, r.Day)) == periodKey);
                             var day = dayItem?.Day ?? 1;
 
                             var newRecord = new InspectionRecord
@@ -355,7 +357,7 @@ namespace webapi.Controllers
                                 DeviceModel = request.DeviceModel,
                                 DeviceName = request.DeviceModel,
                                 InspectionTime = new DateTime(inspectionDate.Year, inspectionDate.Month, day),
-                                Status = "submitted",
+                                Status = InspectionStatus.Submitted,
                                 ResultsJson = "",
                                 Frequency = frequency,
                                 PeriodKey = periodKey
@@ -384,7 +386,8 @@ namespace webapi.Controllers
                         else if (saveValue == "×")
                             saveValue = "异常";
 
-                        var periodKey = $"{inspectionDate.Year:0000}-{inspectionDate.Month:00}-{item.Day:00}";
+                        var periodKey = GeneratePeriodKey(frequency,
+                            new DateTime(inspectionDate.Year, inspectionDate.Month, item.Day));
                         if (!existingRecordMap.TryGetValue(periodKey, out var record))
                             continue;
 
@@ -404,11 +407,12 @@ namespace webapi.Controllers
                     foreach (var kvp in existingRecordMap)
                     {
                         var rec = kvp.Value;
-                        var day = rec.InspectionTime.Day;
+                        var recPeriodKey = kvp.Key;
 
-                        // 收集该 record 的所有异常+requirePhoto 项
+                        // 收集该 record 的所有异常+requirePhoto 项（按 periodKey 匹配）
                         var abnormalPhotoItems = request.Results
-                            .Where(r => r.Day == day
+                            .Where(r => GeneratePeriodKey(frequency,
+                                    new DateTime(inspectionDate.Year, inspectionDate.Month, r.Day)) == recPeriodKey
                                 && requirePhotoItems.Contains(r.ItemName)
                                 && !r.IsNormal)
                             .Select(r => r.ItemName)
@@ -433,7 +437,7 @@ namespace webapi.Controllers
                                 pendingPhotoItems.Add(new
                                 {
                                     recordId = rec.Id,
-                                    day = day,
+                                    periodKey = recPeriodKey,
                                     missingItems = missingItems
                                 });
                             }
@@ -1599,6 +1603,7 @@ namespace webapi.Controllers
         public string EmployeeId { get; set; } = string.Empty;
         public string DeviceModel { get; set; } = string.Empty;
         public DateTime InspectionMonth { get; set; }
+        public string Frequency { get; set; } = "日";
         public List<SaveRecordItem> Results { get; set; } = new();
     }
 

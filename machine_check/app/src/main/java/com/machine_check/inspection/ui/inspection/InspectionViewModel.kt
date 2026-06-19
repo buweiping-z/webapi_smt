@@ -258,7 +258,8 @@ class InspectionViewModel : ViewModel() {
 
         val request = SaveDailyRecordRequest(
             employeeId = state.employeeId, deviceModel = state.deviceModel,
-            inspectionMonth = java.time.LocalDate.now().toString(), results = results
+            inspectionMonth = java.time.LocalDate.now().toString(),
+            frequency = state.frequency, results = results
         )
 
         _uiState.update { (it as InspectionUiState.Form).copy(isSubmitting = true, errorMessage = null) }

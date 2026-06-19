@@ -127,6 +127,7 @@ data class SaveDailyRecordRequest(
     val employeeId: String,
     val deviceModel: String,
     val inspectionMonth: String,    // "2026-06-19"
+    val frequency: String = "日",   // 日/周/月
     val results: List<SaveRecordItem>
 )
 
@@ -145,7 +146,7 @@ data class SaveRecordResponse(
  */
 data class PendingPhotoItem(
     val recordId: Int,
-    val day: Int,
+    val periodKey: String = "",
     val missingItems: List<String>
 )
 
