@@ -2313,12 +2313,12 @@
                     }
                 }
 
-                // 检查该行是否有任何 pending_photo 记录
+                // 检查该行是否有任何 pending 记录
                 let rowHasPending = false;
                 for (let day = 1; day <= daysInMonth; day++) {
                     const key = `${template.itemName}_${day}`;
                     const record = recordMap.get(key);
-                    if (record && record.status === 'pending_photo') { rowHasPending = true; break; }
+                    if (record && record.status === 'pending') { rowHasPending = true; break; }
                 }
 
                 let rowClass = allUninspected ? 'row-uninspected' : '';

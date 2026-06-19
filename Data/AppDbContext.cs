@@ -35,6 +35,10 @@
                     .HasColumnName("period_key")
                     .HasMaxLength(10)
                     .HasDefaultValue("");
+                entity.Property(r => r.Status)
+                    .HasColumnName("status")
+                    .HasMaxLength(20)
+                    .HasDefaultValue("submitted");
                 entity.HasIndex(r => new { r.DeviceModel, r.Frequency, r.PeriodKey })
                     .IsUnique()
                     .HasDatabaseName("idx_records_period");

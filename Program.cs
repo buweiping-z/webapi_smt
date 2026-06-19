@@ -64,6 +64,19 @@ using (var scope = app.Services.CreateScope())
             await cmd.ExecuteNonQueryAsync();
         }
 
+        // 扩展 inspection_records.status 列长度（从 VARCHAR(10) → VARCHAR(20) 以容纳 "pending"）
+        cmd.CommandText = @"
+            SELECT CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = 'inspection_records'
+              AND COLUMN_NAME = 'status'";
+        var currentLen = await cmd.ExecuteScalarAsync();
+        if (currentLen != DBNull.Value && Convert.ToInt32(currentLen) < 20)
+        {
+            cmd.CommandText = "ALTER TABLE inspection_records MODIFY COLUMN status VARCHAR(20) NOT NULL DEFAULT 'submitted'";
+            await cmd.ExecuteNonQueryAsync();
+        }
+
         // 创建 inspection_photos 表（如果不存在）
         cmd.CommandText = @"
             SELECT COUNT(*) FROM information_schema.TABLES
