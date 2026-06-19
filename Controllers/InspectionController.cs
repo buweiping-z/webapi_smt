@@ -420,31 +420,35 @@ namespace webapi.Controllers
 
                         if (abnormalPhotoItems.Count > 0)
                         {
-                            // 有异常+需拍照的项，检查是否已有照片覆盖
-                            var photoItemNames = await _context.InspectionPhotos
-                                .Where(p => p.RecordId == rec.Id)
-                                .Select(p => p.ItemName)
-                                .Distinct()
+                            // 重检场景：删除旧照片（DB + 文件），强制重新上传
+                            var oldPhotos = await _context.InspectionPhotos
+                                .Where(p => p.RecordId == rec.Id
+                                    && abnormalPhotoItems.Contains(p.ItemName))
                                 .ToListAsync();
 
-                            var missingItems = abnormalPhotoItems
-                                .Where(item => !photoItemNames.Contains(item))
-                                .ToList();
+                            foreach (var op in oldPhotos)
+                            {
+                                var photoFull = Path.Combine(_env.WebRootPath,
+                                    op.PhotoPath.TrimStart('/'));
+                                var thumbFull = op.ThumbnailPath != null
+                                    ? Path.Combine(_env.WebRootPath, op.ThumbnailPath.TrimStart('/'))
+                                    : null;
+                                if (System.IO.File.Exists(photoFull))
+                                    System.IO.File.Delete(photoFull);
+                                if (thumbFull != null && System.IO.File.Exists(thumbFull))
+                                    System.IO.File.Delete(thumbFull);
+                            }
+                            _context.InspectionPhotos.RemoveRange(oldPhotos);
+                            await _context.SaveChangesAsync();
 
-                            if (missingItems.Count > 0)
+                            // 旧照片已删除 → 全部标记为待上传
+                            rec.Status = InspectionStatus.PendingPhoto;
+                            pendingPhotoItems.Add(new
                             {
-                                rec.Status = InspectionStatus.PendingPhoto;
-                                pendingPhotoItems.Add(new
-                                {
-                                    recordId = rec.Id,
-                                    periodKey = recPeriodKey,
-                                    missingItems = missingItems
-                                });
-                            }
-                            else
-                            {
-                                rec.Status = InspectionStatus.Submitted;
-                            }
+                                recordId = rec.Id,
+                                periodKey = recPeriodKey,
+                                missingItems = abnormalPhotoItems
+                            });
                         }
                         else
                         {
