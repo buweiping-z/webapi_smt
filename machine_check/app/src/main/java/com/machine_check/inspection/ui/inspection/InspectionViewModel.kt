@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.machine_check.inspection.data.models.InspectionResultItem
 import com.machine_check.inspection.data.models.InspectionTemplate
 import com.machine_check.inspection.data.models.PendingPhotoItem
 import com.machine_check.inspection.data.models.SaveDailyRecordRequest
@@ -30,9 +29,9 @@ data class InspectionItemState(
     val remarkRequired: Boolean = false,
     val isOutOfRange: Boolean = false,
     // 照片相关
-    val photoLocalPath: String? = null,          // 本地照片路径（待上传）
-    val isPhotoUploading: Boolean = false,       // 正在上传中
-    val uploadedPhotoIds: List<Int> = emptyList() // 已上传成功的 photoId 列表
+    val photoLocalPath: String? = null,
+    val isPhotoUploading: Boolean = false,
+    val photoUploaded: Boolean = false      // 上传成功标记
 )
 
 /**
@@ -49,11 +48,11 @@ sealed interface InspectionUiState {
         val isSubmitting: Boolean = false,
         val submitSuccess: Boolean = false,
         val errorMessage: String? = null,
-        // 两阶段提交相关
-        val savedRecordIds: List<Int> = emptyList(),
+        // 两阶段提交 — 第二阶段
+        val phase2Pending: Boolean = false,         // 需要拍照
         val pendingPhotoItems: List<PendingPhotoItem> = emptyList(),
-        val isUploadingPhotos: Boolean = false,
-        val photoUploadProgress: String? = null  // "3/5 已上传"
+        val uploadedCount: Int = 0,
+        val totalPhotoCount: Int = 0
     ) : InspectionUiState
     data class Error(val message: String) : InspectionUiState
     data class Empty(val deviceModel: String) : InspectionUiState
@@ -69,7 +68,6 @@ class InspectionViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<InspectionUiState>(InspectionUiState.Loading)
     val uiState: StateFlow<InspectionUiState> = _uiState.asStateFlow()
 
-    /** 加载指定设备型号的点检模板 */
     fun loadTemplates(deviceModel: String, employeeId: String, frequency: String = "日", periodKey: String = "") {
         _uiState.value = InspectionUiState.Loading
         viewModelScope.launch {
@@ -79,40 +77,29 @@ class InspectionViewModel : ViewModel() {
                         _uiState.value = InspectionUiState.Empty(deviceModel)
                     } else {
                         val sortedTemplates = templates.sortedBy { it.sortOrder }
-                        val items = sortedTemplates.map { template ->
-                            InspectionItemState(template = template)
-                        }
+                        val items = sortedTemplates.map { InspectionItemState(template = it) }
                         _uiState.value = InspectionUiState.Form(
-                            deviceModel = deviceModel,
-                            employeeId = employeeId,
-                            frequency = frequency,
-                            periodKey = periodKey,
-                            items = items
+                            deviceModel = deviceModel, employeeId = employeeId,
+                            frequency = frequency, periodKey = periodKey, items = items
                         )
                     }
                 },
                 onFailure = { error ->
-                    _uiState.value = InspectionUiState.Error(
-                        error.message ?: "未知错误，请重试"
-                    )
+                    _uiState.value = InspectionUiState.Error(error.message ?: "未知错误")
                 }
             )
         }
     }
 
-    /** 切换 normal_abnormal 选项 */
     fun onNormalAbnormalChanged(itemIndex: Int, isNormal: Boolean) {
         val state = _uiState.value as? InspectionUiState.Form ?: return
         val updatedItems = state.items.toMutableList()
         updatedItems[itemIndex] = updatedItems[itemIndex].copy(
-            selectedNormal = isNormal,
-            isValid = true,
-            remarkRequired = !isNormal
+            selectedNormal = isNormal, isValid = true, remarkRequired = !isNormal
         )
         _uiState.update { (it as InspectionUiState.Form).copy(items = updatedItems) }
     }
 
-    /** 更新 numeric 数值 */
     fun onNumericValueChanged(itemIndex: Int, value: String) {
         val state = _uiState.value as? InspectionUiState.Form ?: return
         val numValue = value.toDoubleOrNull()
@@ -122,14 +109,11 @@ class InspectionViewModel : ViewModel() {
              (template.normalMax != null && numValue > template.normalMax))
         val updatedItems = state.items.toMutableList()
         updatedItems[itemIndex] = updatedItems[itemIndex].copy(
-            numericValue = value,
-            isValid = true,
-            isOutOfRange = outOfRange
+            numericValue = value, isValid = true, isOutOfRange = outOfRange
         )
         _uiState.update { (it as InspectionUiState.Form).copy(items = updatedItems) }
     }
 
-    /** 更新备注 */
     fun onRemarkChanged(itemIndex: Int, remark: String) {
         val state = _uiState.value as? InspectionUiState.Form ?: return
         val updatedItems = state.items.toMutableList()
@@ -137,36 +121,90 @@ class InspectionViewModel : ViewModel() {
         _uiState.update { (it as InspectionUiState.Form).copy(items = updatedItems) }
     }
 
-    /** 拍照回调 — 保存本地路径并触发上传 */
+    /** 拍照回调 — 两阶段提交第二阶段：拍照后即时上传 */
     fun onPhotoTaken(itemIndex: Int, filePath: String) {
         val state = _uiState.value as? InspectionUiState.Form ?: return
+
         val updatedItems = state.items.toMutableList()
         updatedItems[itemIndex] = updatedItems[itemIndex].copy(
-            photoLocalPath = filePath
+            photoLocalPath = filePath, isPhotoUploading = true
         )
         _uiState.update { (it as InspectionUiState.Form).copy(items = updatedItems) }
+
+        // 即时压缩 + 上传
+        viewModelScope.launch {
+            val item = updatedItems[itemIndex]
+            val itemName = item.template.itemName
+
+            // 从 pendingPhotoItems 找到对应的 recordId
+            val recordId = state.pendingPhotoItems
+                .firstOrNull { ppi -> ppi.missingItems.contains(itemName) }
+                ?.recordId ?: 0
+            if (recordId == 0) {
+                updatedItems[itemIndex] = updatedItems[itemIndex].copy(isPhotoUploading = false)
+                _uiState.update { (it as InspectionUiState.Form).copy(items = updatedItems) }
+                return@launch
+            }
+
+            // 压缩
+            val compressedPath = compressImage(filePath)
+            val uploadPath = compressedPath ?: filePath
+
+            val result = repository.uploadPhoto(
+                filePath = uploadPath, recordId = recordId,
+                itemName = itemName, uploadedBy = state.employeeId
+            )
+
+            // 清理压缩临时文件
+            if (compressedPath != null && compressedPath != filePath) {
+                File(compressedPath).delete()
+            }
+
+            result.fold(
+                onSuccess = {
+                    val items2 = (_uiState.value as? InspectionUiState.Form)?.items?.toMutableList() ?: return@launch
+                    items2[itemIndex] = items2[itemIndex].copy(
+                        isPhotoUploading = false, photoUploaded = true
+                    )
+                    val newUploaded = ( _uiState.value as? InspectionUiState.Form)?.uploadedCount?.plus(1) ?: 1
+                    val total = ( _uiState.value as? InspectionUiState.Form)?.totalPhotoCount ?: 0
+                    _uiState.update {
+                        (it as InspectionUiState.Form).copy(
+                            items = items2, uploadedCount = newUploaded
+                        )
+                    }
+                    // 全部上传完成 → 自动成功
+                    if (newUploaded >= total) {
+                        _uiState.update {
+                            (it as InspectionUiState.Form).copy(phase2Pending = false, submitSuccess = true)
+                        }
+                    }
+                },
+                onFailure = {
+                    val items2 = (_uiState.value as? InspectionUiState.Form)?.items?.toMutableList() ?: return@launch
+                    items2[itemIndex] = items2[itemIndex].copy(isPhotoUploading = false)
+                    _uiState.update { (it as InspectionUiState.Form).copy(items = items2) }
+                }
+            )
+        }
     }
 
-    /** 清除错误提示 */
     fun clearError() {
         val state = _uiState.value as? InspectionUiState.Form ?: return
         _uiState.update { state.copy(errorMessage = null) }
     }
 
-    /** ========== 两阶段提交 ========== */
+    // ========== 两阶段提交 ==========
 
     /**
-     * 阶段 1: 保存点检数据到 records/save
-     * 阶段 2: 上传缺照片项的照片
+     * 阶段 1: 保存文字结果到 records/save（不强制拍照）
+     * 阶段 2: 如有 pendingPhotoItems → 引导用户逐项拍照上传
      */
     fun submitInspection() {
         val state = _uiState.value as? InspectionUiState.Form ?: return
-        val deviceModel = state.deviceModel
-        val employeeId = state.employeeId
-        val inspectionMonth = java.time.LocalDate.now().toString()
 
-        // ===== 验证 =====
-        val validatedItems = state.items.mapIndexed { index, item ->
+        // ===== 验证（仅文字校验，不强制拍照——两阶段提交） =====
+        val validatedItems = state.items.mapIndexed { _, item ->
             val template = item.template
             val baseValid = when (template.itemType) {
                 "normal_abnormal" -> {
@@ -177,33 +215,21 @@ class InspectionViewModel : ViewModel() {
                 "numeric" -> item.numericValue.toDoubleOrNull() != null
                 else -> true
             }
-            // requirePhoto + 异常 → 必须拍照
-            val photoRequired = template.requirePhoto && item.selectedNormal == false &&
-                item.photoLocalPath == null
-            item.copy(
-                isValid = baseValid && !photoRequired,
-                remarkRequired = item.selectedNormal == false
-            )
+            item.copy(isValid = baseValid, remarkRequired = item.selectedNormal == false)
         }
 
         val hasErrors = validatedItems.any { !it.isValid }
         if (hasErrors) {
-            val photoMissing = validatedItems.any {
-                it.template.requirePhoto && it.selectedNormal == false && it.photoLocalPath == null
-            }
             _uiState.update {
                 (it as InspectionUiState.Form).copy(
                     items = validatedItems,
-                    errorMessage = if (photoMissing)
-                        "异常项且需要拍照的检查项必须先拍照再提交"
-                    else
-                        "异常项必须填写备注，或数值格式不正确"
+                    errorMessage = "异常项必须填写备注，或数值格式不正确"
                 )
             }
             return
         }
 
-        // ===== 构建请求 =====
+        // ===== 构建 records/save 请求 =====
         val today = java.time.LocalDate.now().dayOfMonth
         val results = validatedItems.map { item ->
             val template = item.template
@@ -222,28 +248,19 @@ class InspectionViewModel : ViewModel() {
                             else -> true
                         }
                         item.numericValue to inRange
-                    } else {
-                        item.numericValue to true
-                    }
+                    } else item.numericValue to true
                 }
                 else -> "" to true
             }
-            SaveRecordItem(
-                day = today,
-                itemName = template.itemName,
-                resultValue = resultValue,
-                remark = item.remark
-            )
+            SaveRecordItem(day = today, itemName = template.itemName,
+                resultValue = resultValue, remark = item.remark)
         }
 
         val request = SaveDailyRecordRequest(
-            employeeId = employeeId,
-            deviceModel = deviceModel,
-            inspectionMonth = inspectionMonth,
-            results = results
+            employeeId = state.employeeId, deviceModel = state.deviceModel,
+            inspectionMonth = java.time.LocalDate.now().toString(), results = results
         )
 
-        // ===== 发送保存请求 =====
         _uiState.update { (it as InspectionUiState.Form).copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
             repository.saveDailyRecord(request).fold(
@@ -251,23 +268,20 @@ class InspectionViewModel : ViewModel() {
                     if (response.pendingPhotoItems.isEmpty()) {
                         // 无缺照片项 → 直接完成
                         _uiState.update {
-                            (it as InspectionUiState.Form).copy(
-                                isSubmitting = false,
-                                submitSuccess = true
-                            )
+                            (it as InspectionUiState.Form).copy(isSubmitting = false, submitSuccess = true)
                         }
                     } else {
-                        // 有缺照片项 → 进入阶段 2：上传照片
+                        // 进入阶段 2：提示用户逐项拍照
+                        val totalPhotos = response.pendingPhotoItems.sumOf { it.missingItems.size }
                         _uiState.update {
                             (it as InspectionUiState.Form).copy(
                                 isSubmitting = false,
-                                savedRecordIds = response.recordIds,
+                                phase2Pending = true,
                                 pendingPhotoItems = response.pendingPhotoItems,
-                                photoUploadProgress = "0/${response.pendingPhotoItems.size} 项待拍照"
+                                totalPhotoCount = totalPhotos,
+                                uploadedCount = 0
                             )
                         }
-                        // 自动开始上传已有本地照片
-                        uploadPendingPhotos()
                     }
                 },
                 onFailure = { error ->
@@ -282,134 +296,23 @@ class InspectionViewModel : ViewModel() {
         }
     }
 
-    /** 上传所有待处理的照片 */
-    private fun uploadPendingPhotos() {
-        val state = _uiState.value as? InspectionUiState.Form ?: return
-        val employeeId = state.employeeId
-
-        // 收集所有需要上传的照片：pendingPhotoItems 中的 missingItems
-        val pendingMap = mutableMapOf<String, Int>() // "itemName" → recordId
-        for (ppi in state.pendingPhotoItems) {
-            for (itemName in ppi.missingItems) {
-                pendingMap[itemName] = ppi.recordId
-            }
-        }
-
-        if (pendingMap.isEmpty()) {
-            _uiState.update { state.copy(isUploadingPhotos = false, submitSuccess = true) }
-            return
-        }
-
-        _uiState.update { state.copy(isUploadingPhotos = true) }
-        var uploaded = 0
-        val total = pendingMap.size
-
-        viewModelScope.launch {
-            for ((itemName, recordId) in pendingMap) {
-                // 找到该检查项对应的本地照片
-                val itemIndex = state.items.indexOfFirst { it.template.itemName == itemName }
-                if (itemIndex < 0) continue
-
-                val item = state.items[itemIndex]
-                val localPath = item.photoLocalPath
-
-                if (localPath == null || !File(localPath).exists()) {
-                    // 无本地照片 → 标记为待拍照，不上传
-                    continue
-                }
-
-                // 更新上传状态
-                val updatedItems = state.items.toMutableList()
-                updatedItems[itemIndex] = updatedItems[itemIndex].copy(isPhotoUploading = true)
-                _uiState.update {
-                    (it as InspectionUiState.Form).copy(
-                        items = updatedItems,
-                        photoUploadProgress = "$uploaded/$total 正在上传..."
-                    )
-                }
-
-                // 压缩后上传
-                val compressedPath = compressImage(localPath)
-                val uploadPath = compressedPath ?: localPath
-
-                val result = repository.uploadPhoto(
-                    filePath = uploadPath,
-                    recordId = recordId,
-                    itemName = itemName,
-                    uploadedBy = employeeId
-                )
-
-                result.fold(
-                    onSuccess = { response ->
-                        uploaded++
-                        val items2 = ( _uiState.value as? InspectionUiState.Form)?.items?.toMutableList() ?: return@fold
-                        val idx = items2.indexOfFirst { it.template.itemName == itemName }
-                        if (idx >= 0) {
-                            items2[idx] = items2[idx].copy(
-                                isPhotoUploading = false,
-                                uploadedPhotoIds = items2[idx].uploadedPhotoIds + response.photoId
-                            )
-                        }
-                        _uiState.update {
-                            (it as InspectionUiState.Form).copy(
-                                items = items2,
-                                photoUploadProgress = "$uploaded/$total 已上传"
-                            )
-                        }
-                    },
-                    onFailure = { error ->
-                        val items2 = ( _uiState.value as? InspectionUiState.Form)?.items?.toMutableList() ?: return@fold
-                        val idx = items2.indexOfFirst { it.template.itemName == itemName }
-                        if (idx >= 0) {
-                            items2[idx] = items2[idx].copy(isPhotoUploading = false)
-                        }
-                        _uiState.update {
-                            (it as InspectionUiState.Form).copy(items = items2)
-                        }
-                    }
-                )
-
-                // 清理压缩文件
-                if (compressedPath != null && compressedPath != localPath) {
-                    File(compressedPath).delete()
-                }
-            }
-
-            // 所有上传完成
-            _uiState.update {
-                val s = it as InspectionUiState.Form
-                s.copy(
-                    isUploadingPhotos = false,
-                    submitSuccess = true,
-                    photoUploadProgress = "$uploaded/$total 上传完成"
-                )
-            }
-        }
-    }
-
-    /** 跳过拍照，直接完成提交 */
+    /** 跳过拍照，直接完成 */
     fun skipPhotoUpload() {
         _uiState.update {
             val s = it as? InspectionUiState.Form ?: return
-            s.copy(isUploadingPhotos = false, submitSuccess = true)
+            s.copy(phase2Pending = false, submitSuccess = true)
         }
     }
 
-    /** 压缩图片：最大宽度 1920px，JPEG quality 80 */
+    // ========== 图片处理 ==========
+
     private fun compressImage(filePath: String): String? {
         return try {
             val original = BitmapFactory.decodeFile(filePath) ?: return null
-            val maxWidth = 1920
-            val width: Int
-            val height: Int
-            if (original.width > maxWidth) {
-                val ratio = maxWidth.toFloat() / original.width.toFloat()
-                width = maxWidth
-                height = (original.height * ratio).toInt()
-            } else {
-                width = original.width
-                height = original.height
-            }
+            if (original.width <= 1920) return null // 不需要压缩
+            val ratio = 1920f / original.width.toFloat()
+            val width = 1920
+            val height = (original.height * ratio).toInt()
             val resized = Bitmap.createScaledBitmap(original, width, height, true)
             if (resized != original) original.recycle()
 
@@ -418,14 +321,10 @@ class InspectionViewModel : ViewModel() {
                 resized.compress(Bitmap.CompressFormat.JPEG, 80, out)
             }
             resized.recycle()
-
             if (compressedFile.length() > 0) compressedFile.absolutePath else null
-        } catch (e: Exception) {
-            null // 压缩失败时返回 null，调用方使用原图
-        }
+        } catch (e: Exception) { null }
     }
 
-    /** 重试加载 */
     fun retry(deviceModel: String, employeeId: String, frequency: String = "日", periodKey: String = "") {
         loadTemplates(deviceModel, employeeId, frequency, periodKey)
     }
