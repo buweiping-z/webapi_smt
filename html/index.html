@@ -2362,9 +2362,9 @@
                     // 空值或未定义显示 "/"
                     let displayValue = (value && value !== '') ? value : '/';
 
-                    // 照片标记
+                    // 照片标记 — 仅在异常时显示
                     let photoIndicator = '';
-                    if (record && record.recordId) {
+                    if (record && record.recordId && !record.isNormal) {
                         const photoKey = `${record.recordId}_${template.itemName}`;
                         const photos = photoMap[photoKey];
                         if (photos && photos.length > 0) {
