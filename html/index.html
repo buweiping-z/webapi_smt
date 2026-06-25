@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -2779,14 +2779,14 @@
                     html2canvas:  { scale: 1.5, width: capW, windowWidth: capW },
                     jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
                 }).from(html).save();
-
+            } catch (pdfError) {
+                console.error('PDF 生成失败:', pdfError);
+                throw pdfError; // 重新抛出，让 batchExportAll 的逐设备 catch 处理
+            } finally {
                 // 清理 html2pdf 可能残留的临时 DOM 元素（连续批量导出时尤其重要）
                 setTimeout(() => {
                     document.querySelectorAll('[id^="html2pdf"]').forEach(el => el.remove());
                 }, 200);
-            } catch (pdfError) {
-                console.error('PDF 生成失败:', pdfError);
-                throw pdfError; // 重新抛出，让 batchExportAll 的逐设备 catch 处理
             }
         }
 
@@ -2882,17 +2882,6 @@
                     }
                 }
 
-                // 恢复之前的设备上下文（无论成功失败都要恢复）
-                currentDevice = savedDevice;
-                templatesData = savedTemplates;
-                recordsData = savedRecords;
-                signatures = savedSignatures;
-                await renderReadOnlyTable();
-                updateSignatureDisplay();
-
-                btn.disabled = false;
-                btn.textContent = '一键导出';
-
                 // 汇总报告
                 const total = devices.length;
                 if (failList.length === 0) {
@@ -2905,9 +2894,17 @@
                 }
             } catch (e) {
                 console.error('批量导出前置检查失败:', e);
+                alert('导出失败：' + (e.response?.data?.error || e.message));
+            } finally {
+                // 恢复之前的设备上下文（CLAUDE.md: 全局状态必须在 finally 块恢复）
+                currentDevice = savedDevice;
+                templatesData = savedTemplates;
+                recordsData = savedRecords;
+                signatures = savedSignatures;
+                await renderReadOnlyTable();
+                updateSignatureDisplay();
                 btn.disabled = false;
                 btn.textContent = '一键导出';
-                alert('导出失败：' + (e.response?.data?.error || e.message));
             }
         }
 
