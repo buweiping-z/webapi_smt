@@ -2737,7 +2737,7 @@
             const tableClone = table.cloneNode(true);
             const tableOnly = tableClone.outerHTML;
             const html = `
-            <div style="isolation:isolate;font-family:'Microsoft YaHei',Arial,sans-serif;padding:10px 15px 20px 15px;background:#fff;width:${capW}px;color:#333;line-height:1.5;">
+            <div style="isolation:isolate;font-family:'Microsoft YaHei',Arial,sans-serif;padding:10px 15px 20px 15px;background:#fff;width:${capW}px;color:#333;line-height:1.5;overflow:hidden;">
                 <!-- 标题行：附表一矩形框（左） + 设备治工具点检表标题（居中） -->
                 <div style="display:flex;align-items:center;margin:0 0 10px 0;">
                     <div style="border:2.5px solid #333;padding:6px 14px;font-size:16px;font-weight:bold;flex-shrink:0;letter-spacing:2px;">附表一</div>
@@ -2771,12 +2771,17 @@
                 </div>
             </div>`;
 
+            // 补偿浏览器缩放：devicePixelRatio 随 Ctrl+/- 缩放变化，反比调整 scale
+            // 使 html2canvas 输出分辨率在不同缩放级别下保持一致
+            const dpr = window.devicePixelRatio || 1;
+            const pdfScale = dpr >= 1 ? 1.5 : 1.5 / dpr;
+
             try {
                 await html2pdf().set({
                     margin:       [8, 6, 8, 6],
                     filename:     `点检表_${deviceName}_${currentYear}年${currentMonth}月.pdf`,
                     image:        { type: 'jpeg', quality: 0.92 },
-                    html2canvas:  { scale: 1.5, width: capW, windowWidth: capW },
+                    html2canvas:  { scale: pdfScale, width: capW, windowWidth: capW },
                     jsPDF:        { unit: 'mm', format: 'a3', orientation: 'landscape' }
                 }).from(html).save();
             } catch (pdfError) {
