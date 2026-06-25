@@ -276,7 +276,7 @@ namespace webapi.Controllers
 
             // 权限校验：仅允许上传者删除自己的照片
             if (!string.IsNullOrEmpty(operatorId) && !string.IsNullOrEmpty(photo.UploadedBy)
-                && photo.UploadedBy != operatorId)
+                && !string.Equals(photo.UploadedBy, operatorId, StringComparison.OrdinalIgnoreCase))
                 return BadRequest(new { success = false, message = "只能删除自己上传的照片" });
 
             // 删除物理文件

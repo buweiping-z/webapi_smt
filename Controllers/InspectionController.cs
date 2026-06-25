@@ -28,9 +28,12 @@ namespace webapi.Controllers
             if (request == null || string.IsNullOrEmpty(request.EmployeeId))
                 return BadRequest("工号不能为空");
 
+            // 统一转大写，避免大小写不一致导致的匹配失败
+            var employeeId = request.EmployeeId.ToUpperInvariant();
+
             // 验证工号是否为点检资格人员
             var isQualified = await _context.QualifiedInspectors
-                .AnyAsync(o => o.EmployeeId == request.EmployeeId);
+                .AnyAsync(o => o.EmployeeId == employeeId);
             if (!isQualified)
                 return BadRequest(new { success = false, message = "该工号无点检资格" });
 
@@ -45,7 +48,7 @@ namespace webapi.Controllers
 
             var record = new InspectionRecord
             {
-                EmployeeId = request.EmployeeId,
+                EmployeeId = employeeId,
                 DeviceName = request.DeviceName,
                 DeviceModel = request.DeviceName, // 暂时兼容
                 InspectionTime = DateTime.Now,
@@ -83,9 +86,12 @@ namespace webapi.Controllers
             if (request == null || string.IsNullOrEmpty(request.EmployeeId))
                 return BadRequest("工号不能为空");
 
+            // 统一转大写，避免大小写不一致导致的匹配失败
+            var employeeId = request.EmployeeId.ToUpperInvariant();
+
             // 验证工号是否为点检资格人员
             var isQualified = await _context.QualifiedInspectors
-                .AnyAsync(o => o.EmployeeId == request.EmployeeId);
+                .AnyAsync(o => o.EmployeeId == employeeId);
             if (!isQualified)
                 return BadRequest(new { success = false, message = "该工号无点检资格" });
 
@@ -135,7 +141,7 @@ namespace webapi.Controllers
 
             var record = new InspectionRecord
             {
-                EmployeeId = request.EmployeeId,
+                EmployeeId = employeeId,
                 DeviceModel = request.DeviceModel,
                 DeviceName = request.DeviceModel,
                 InspectionTime = now,
@@ -317,7 +323,7 @@ namespace webapi.Controllers
             try
             {
                 var inspectionDate = request.InspectionMonth;
-                var employeeId = string.IsNullOrEmpty(request.EmployeeId) ? "web" : request.EmployeeId;
+                var employeeId = string.IsNullOrEmpty(request.EmployeeId) ? "web" : request.EmployeeId.ToUpperInvariant();
                 var frequency = string.IsNullOrEmpty(request.Frequency) ? "日" : request.Frequency;
 
                 // 收集所有周期键
@@ -689,7 +695,7 @@ namespace webapi.Controllers
                 .Select(o => o.EmployeeId)
                 .ToListAsync();
 
-            var existingSet = new HashSet<string>(existingIds);
+            var existingSet = new HashSet<string>(existingIds, StringComparer.OrdinalIgnoreCase);
             var added = 0;
 
             foreach (var req in requests)
@@ -697,15 +703,17 @@ namespace webapi.Controllers
                 if (string.IsNullOrEmpty(req.EmployeeId) || string.IsNullOrEmpty(req.LastName))
                     continue;
 
-                if (existingSet.Contains(req.EmployeeId))
-                    return BadRequest(new { success = false, message = $"工号 {req.EmployeeId} 已存在" });
+                var normalizedId = req.EmployeeId.ToUpperInvariant();
+
+                if (existingSet.Contains(normalizedId))
+                    return BadRequest(new { success = false, message = $"工号 {normalizedId} 已存在" });
 
                 _context.QualifiedInspectors.Add(new QualifiedInspector
                 {
-                    EmployeeId = req.EmployeeId,
+                    EmployeeId = normalizedId,
                     LastName = req.LastName
                 });
-                existingSet.Add(req.EmployeeId);
+                existingSet.Add(normalizedId);
                 added++;
             }
 
@@ -717,25 +725,29 @@ namespace webapi.Controllers
         [HttpDelete("operators/{employeeId}")]
         public async Task<IActionResult> DeleteOperator(string employeeId)
         {
+            var normalizedId = employeeId.ToUpperInvariant();
+
             var operator_ = await _context.QualifiedInspectors
                 .AsTracking()
-                .FirstOrDefaultAsync(o => o.EmployeeId == employeeId);
+                .FirstOrDefaultAsync(o => o.EmployeeId == normalizedId);
 
             if (operator_ == null)
-                return NotFound(new { success = false, message = $"工号 {employeeId} 不存在" });
+                return NotFound(new { success = false, message = $"工号 {normalizedId} 不存在" });
 
             _context.QualifiedInspectors.Remove(operator_);
             await _context.SaveChangesAsync();
 
-            return Ok(new { success = true, message = $"已移除点检资格人员 {employeeId}" });
+            return Ok(new { success = true, message = $"已移除点检资格人员 {normalizedId}" });
         }
 
         // 17. 验证工号是否为点检资格人员
         [HttpGet("operators/validate/{employeeId}")]
         public async Task<IActionResult> ValidateOperator(string employeeId)
         {
+            var normalizedId = employeeId.ToUpperInvariant();
+
             var inspector = await _context.QualifiedInspectors
-                .FirstOrDefaultAsync(o => o.EmployeeId == employeeId);
+                .FirstOrDefaultAsync(o => o.EmployeeId == normalizedId);
 
             if (inspector == null)
                 return Ok(new { valid = false });
@@ -774,18 +786,18 @@ namespace webapi.Controllers
                 .SqlQueryRaw<DailyOperatorRaw>(sql, deviceModel, startDate, endDate)
                 .ToListAsync();
 
-            // JOIN qualified_inspectors 获取姓
+            // JOIN qualified_inspectors 获取姓（大小写不敏感匹配，兼容历史数据）
             var employeeIds = dailyRecords.Select(r => r.EmployeeId).Distinct().ToList();
             Dictionary<string, string> inspectors;
             if (employeeIds.Count > 0)
             {
                 inspectors = await _context.QualifiedInspectors
                     .Where(o => employeeIds.Contains(o.EmployeeId))
-                    .ToDictionaryAsync(o => o.EmployeeId, o => o.LastName);
+                    .ToDictionaryAsync(o => o.EmployeeId, o => o.LastName, StringComparer.OrdinalIgnoreCase);
             }
             else
             {
-                inspectors = new Dictionary<string, string>();
+                inspectors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             }
 
             var result = new Dictionary<string, string>();
