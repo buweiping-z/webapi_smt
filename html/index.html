@@ -2833,6 +2833,7 @@
             btn.disabled = true;
             btn.textContent = '检查中...';
 
+            let savedDevice, savedTemplates, savedRecords, savedSignatures;
             try {
                 // 1. 检查签名完整性
                 const checkRes = await axios.get(`${API_BASE_URL}/api/Inspection/signatures/check-all`, { params: { year, month } });
@@ -2859,10 +2860,10 @@
                 }
 
                 // 2. 逐台导出 — 复用页面渲染和 exportPDF 逻辑
-                const savedDevice = currentDevice;
-                const savedTemplates = templatesData;
-                const savedRecords = recordsData;
-                const savedSignatures = { ...signatures };
+                savedDevice = currentDevice;
+                savedTemplates = templatesData;
+                savedRecords = recordsData;
+                savedSignatures = { ...signatures };
 
                 const successList = [];
                 const failList = [];
