@@ -1,2 +1,0 @@
-# 以管理员身份运行 PowerShell
-New-NetFirewallRule -DisplayName "Inspection API" -Direction Inbound -Protocol TCP -LocalPort 5039 -Action Allow

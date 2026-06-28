@@ -67,6 +67,7 @@ namespace webapi.Controllers
         public async Task<IActionResult> GetTemplates(string deviceModel, [FromQuery] string? frequency = null)
         {
             var query = _context.InspectionTemplates
+                .Include(t => t.PositionPhotos)
                 .Where(t => t.DeviceModel == deviceModel);
 
             if (!string.IsNullOrEmpty(frequency))
@@ -75,6 +76,12 @@ namespace webapi.Controllers
             var templates = await query
                 .OrderBy(t => t.SortOrder)
                 .ToListAsync();
+
+            // 确保每个模板内的定位照片按 PhotoOrder 排序
+            foreach (var t in templates)
+            {
+                t.PositionPhotos = t.PositionPhotos.OrderBy(p => p.PhotoOrder).ToList();
+            }
 
             return Ok(templates);
         }

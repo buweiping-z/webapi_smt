@@ -68,6 +68,9 @@ dependencies {
     // ========== ML Kit 条码识别 ==========
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
+    // ========== ZXing 条码解码 ==========
+    implementation("com.google.zxing:core:3.5.3")
+
     // ========== 图片加载 ==========
     implementation("io.coil-kt:coil-compose:2.7.0")
 

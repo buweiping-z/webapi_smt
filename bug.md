@@ -239,10 +239,11 @@
 **根因:** `tableContainer.innerHTML` 外层有 `<div style="overflow-x: auto;">` wrapper，在 html2canvas 渲染时表格内容溢出容器边界，把底部说明行挤出捕获区域。
 
 **修复:**
-- 拼接 PDF HTML 时用正则去掉 `overflow-x:auto` 外层 div
+- ~~拼接 PDF HTML 时用正则去掉 `overflow-x:auto` 外层 div~~（正则方案仍偶发失败）
 - PDF 容器加 `overflow:hidden` + 底部 padding 20px
 - 说明行加 `white-space:nowrap` + `flex-wrap:nowrap`
 - SM-T1-03 加 `flex-shrink:0`
+- **2026-06-24 补充修复**: 正则 `/<\/div>\s*$/` 在浏览器 HTML 序列化差异下会静默匹配失败（匹配到表格内部的 `</div>` 或未匹配到 wrapper 的），改用 `table.cloneNode(true).outerHTML` 直接克隆表格节点，彻底避免正则解析 HTML 的脆弱性。
 
 **教训:** `innerHTML` 的内容是为浏览器交互设计的（滚动、自适应），直接复用到 html2canvas 时交互样式可能导致渲染错位。PDF 需要的 HTML 应该是「打印友好」的静态结构。
 

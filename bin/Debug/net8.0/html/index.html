@@ -1,0 +1,3019 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>设备点检管理系统</title>
+    <!-- Google Fonts: Poppins + Open Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================================
+           CSS Variables — Industrial Grey + Safety Orange Theme
+           ============================================================ */
+        :root {
+            /* Primary palette */
+            --primary: #1E293B;
+            --primary-light: #334155;
+            --primary-lighter: #475569;
+            --primary-muted: #64748B;
+
+            /* Accent */
+            --accent: #F97316;
+            --accent-hover: #EA580C;
+            --accent-light: #FFF7ED;
+            --accent-ring: rgba(249, 115, 22, 0.25);
+
+            /* Semantic */
+            --success: #10B981;
+            --success-light: #ECFDF5;
+            --success-border: #A7F3D0;
+            --danger: #EF4444;
+            --danger-hover: #DC2626;
+            --danger-light: #FEF2F2;
+            --danger-border: #FECACA;
+            --warning: #F59E0B;
+            --warning-light: #FFFBEB;
+            --warning-border: #FDE68A;
+            --info: #3B82F6;
+            --info-light: #EFF6FF;
+            --info-border: #BFDBFE;
+
+            /* Surfaces */
+            --bg: #F1F5F9;
+            --bg-alt: #F8FAFC;
+            --surface: #FFFFFF;
+            --surface-hover: #F8FAFC;
+
+            /* Borders */
+            --border: #E2E8F0;
+            --border-light: #F1F5F9;
+
+            /* Text */
+            --text: #0F172A;
+            --text-secondary: #475569;
+            --text-muted: #94A3B8;
+
+            /* Radii */
+            --radius-xs: 4px;
+            --radius-sm: 6px;
+            --radius: 10px;
+            --radius-lg: 14px;
+            --radius-xl: 18px;
+
+            /* Shadows */
+            --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.06);
+            --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.08), 0 4px 10px rgba(0,0,0,0.04);
+
+            /* Transitions */
+            --transition-fast: 0.15s ease;
+            --transition: 0.2s ease;
+            --transition-slow: 0.3s ease;
+
+            /* Fonts */
+            --font-heading: 'Poppins', system-ui, -apple-system, sans-serif;
+            --font-body: 'Open Sans', system-ui, -apple-system, sans-serif;
+        }
+
+        /* ============================================================
+           CSS Reset & Base
+           ============================================================ */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-body);
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 20% 0%, rgba(249,115,22,0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(30,41,59,0.02) 0%, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        /* ============================================================
+           Container
+           ============================================================ */
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        /* ============================================================
+           Header — Modern gradient with depth
+           ============================================================ */
+        .header {
+            position: relative;
+            padding: 32px 48px 28px;
+            background: linear-gradient(135deg, #1E293B 0%, #334155 40%, #475569 100%);
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                radial-gradient(ellipse at 20% 50%, rgba(249,115,22,0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 30%, rgba(59,130,246,0.08) 0%, transparent 40%);
+            pointer-events: none;
+        }
+
+        /* Subtle geometric pattern overlay */
+        .header::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                repeating-linear-gradient(45deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px),
+                repeating-linear-gradient(-45deg, transparent, transparent 40px, rgba(255,255,255,0.015) 40px, rgba(255,255,255,0.015) 41px);
+            pointer-events: none;
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        /* Header icon mark */
+        .header-mark {
+            width: 42px;
+            height: 42px;
+            border-radius: var(--radius-sm);
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(249,115,22,0.35);
+        }
+
+        .header-mark svg {
+            width: 22px;
+            height: 22px;
+            stroke: white;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .header h1 {
+            font-family: var(--font-heading);
+            font-size: 26px;
+            font-weight: 600;
+            color: #FFFFFF;
+            letter-spacing: 0.04em;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================================
+           Header Layout — title centered, stamps absolute-right
+           ============================================================ */
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* ============================================================
+           Header Stamps — right side of header
+           ============================================================ */
+        .header-stamps {
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            align-items: center;
+            gap: 28px;
+            flex-shrink: 0;
+        }
+
+        .header .stamp-role-label {
+            color: rgba(255, 255, 255, 0.80);
+        }
+
+        /* ============================================================
+           Signature Corner — Stamps/Seals (inside filters bar)
+           ============================================================ */
+        .stamp-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .stamp-role-label {
+            font-family: var(--font-heading);
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 3px;
+        }
+
+        /* CSS electronic seal */
+        .stamp-seal {
+            width: 68px;
+            height: 68px;
+            border: 3px solid #DC2626;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: rgba(220,38,38,0.05);
+            box-shadow: 0 0 0 2px rgba(220,38,38,0.12), 0 2px 8px rgba(0,0,0,0.15);
+            user-select: none;
+            flex-shrink: 0;
+            transition: all var(--transition);
+        }
+
+        .stamp-seal::before {
+            content: '';
+            position: absolute;
+            top: 6px; left: 6px; right: 6px; bottom: 6px;
+            border: 1px dashed rgba(220,38,38,0.25);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .stamp-seal::after {
+            content: '★';
+            position: absolute;
+            font-size: 20px;
+            color: rgba(220,38,38,0.08);
+            pointer-events: none;
+        }
+
+        .stamp-name {
+            font-family: var(--font-heading);
+            font-size: 14px;
+            font-weight: 600;
+            color: #DC2626;
+            z-index: 1;
+            text-align: center;
+            line-height: 1.3;
+            max-width: 50px;
+            word-break: keep-all;
+            letter-spacing: 4px;
+            writing-mode: vertical-rl;
+        }
+
+        /* Slight rotation for realism */
+        .stamp-item:nth-child(1) .stamp-seal { transform: rotate(-3deg); }
+        .stamp-item:nth-child(2) .stamp-seal { transform: rotate(2deg); }
+        .stamp-item:nth-child(3) .stamp-seal { transform: rotate(-1deg); }
+
+        /* Unsigned state */
+        .stamp-seal.unsigned {
+            border-color: rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.04);
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.05);
+        }
+        .stamp-seal.unsigned::before { border-color: rgba(255,255,255,0.08); }
+        .stamp-seal.unsigned::after { color: rgba(255,255,255,0.04); }
+        .stamp-seal.unsigned .stamp-name {
+            color: rgba(255,255,255,0.45);
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        /* ============================================================
+           Content Body
+           ============================================================ */
+        .content-body {
+            padding: 0 24px 0;
+        }
+
+        /* ============================================================
+           Filters — Card-style bar
+           ============================================================ */
+        .filters {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            padding: 10px 16px;
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            align-items: flex-end;
+            box-shadow: var(--shadow-xs);
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .filter-item label {
+            font-family: var(--font-heading);
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filter-item select,
+        .filter-item input {
+            padding: 5px 10px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-family: var(--font-body);
+            color: var(--text);
+            background: var(--surface);
+            transition: all var(--transition-fast);
+            min-width: 150px;
+            outline: none;
+        }
+
+        .filter-item select:focus,
+        .filter-item input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+
+        .filter-item input[readonly] {
+            background: var(--bg);
+            cursor: default;
+        }
+
+        .filter-item input[readonly]:focus {
+            border-color: var(--border);
+            box-shadow: none;
+        }
+
+        .filter-item .input-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Readonly stat inputs */
+        .stat-input {
+            width: 85px !important;
+            min-width: 85px !important;
+            text-align: center;
+            font-weight: 700;
+            font-size: 16px !important;
+            font-family: var(--font-heading) !important;
+            letter-spacing: 0.5px;
+            transition: all var(--transition);
+        }
+
+        /* Device navigation buttons — compact to match select height */
+        .btn-nav {
+            width: 24px;
+            height: 15px;
+            padding: 0;
+            background: var(--primary-muted);
+            color: white;
+            font-size: 7px;
+            font-weight: 700;
+            line-height: 1;
+            min-width: auto;
+            border-radius: 3px;
+            border: none;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        .btn-nav:hover { background: var(--primary-lighter); }
+        .btn-nav:active { transform: scale(0.95); }
+
+        .device-nav-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        /* ============================================================
+           Buttons — Modern hierarchy
+           ============================================================ */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 9px 18px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            transition: all var(--transition-fast);
+            min-width: 84px;
+            height: 38px;
+            white-space: nowrap;
+            outline: none;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: transparent;
+            transition: background var(--transition-fast);
+        }
+
+        .btn:hover::after {
+            background: rgba(0,0,0,0.06);
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn:disabled::after { display: none; }
+        .btn:focus-visible {
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+
+        /* Primary — dark slate */
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-primary:hover { background: var(--primary-light); box-shadow: var(--shadow); }
+
+        /* Accent — safety orange */
+        .btn-accent {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 2px 8px rgba(249,115,22,0.25);
+        }
+        .btn-accent:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(249,115,22,0.35); }
+
+        /* Action buttons with distinct colors */
+        .btn-confirm {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 2px 8px rgba(249,115,22,0.25);
+        }
+        .btn-confirm:hover { background: var(--accent-hover); box-shadow: 0 4px 12px rgba(249,115,22,0.35); }
+
+        .btn-all-sign {
+            background: #7C3AED;
+            color: white;
+            box-shadow: 0 2px 8px rgba(124,58,237,0.2);
+        }
+        .btn-all-sign:hover { background: #6D28D9; box-shadow: 0 4px 12px rgba(124,58,237,0.3); }
+
+        .btn-pdf {
+            background: #2563EB;
+            color: white;
+            box-shadow: 0 2px 8px rgba(37,99,235,0.2);
+        }
+        .btn-pdf:hover { background: #1D4ED8; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+
+        .btn-export-all {
+            background: #0891B2;
+            color: white;
+            box-shadow: 0 2px 8px rgba(8,145,178,0.2);
+        }
+        .btn-export-all:hover { background: #0E7490; box-shadow: 0 4px 12px rgba(8,145,178,0.3); }
+
+        .btn-import-plan {
+            background: #0D9488;
+            color: white;
+            box-shadow: 0 2px 8px rgba(13,148,136,0.2);
+        }
+        .btn-import-plan:hover { background: #0F766E; box-shadow: 0 4px 12px rgba(13,148,136,0.3); }
+
+        /* Action buttons group */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* ============================================================
+           Bars — User, Status, Error
+           ============================================================ */
+        .info-bar {
+            margin: 12px 0;
+            padding: 11px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideDown 0.25s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-bar {
+            background: var(--success-light);
+            border: 1px solid var(--success-border);
+            color: #065F46;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .user-bar .user-info-section {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .user-bar .user-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--success);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-heading);
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .status-bar {
+            background: var(--info-light);
+            border: 1px solid var(--info-border);
+            color: #1E40AF;
+        }
+
+        .error-bar {
+            background: var(--danger-light);
+            border: 1px solid var(--danger-border);
+            color: #991B1B;
+        }
+
+        /* Logout button */
+        .logout-btn {
+            background: var(--danger);
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 12px;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            min-width: 76px;
+            height: 32px;
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-xs);
+        }
+        .logout-btn:hover { background: var(--danger-hover); box-shadow: var(--shadow-sm); }
+        .logout-btn:active { transform: scale(0.97); }
+
+        /* Inspector select in user bar */
+        .inspector-select {
+            padding: 5px 10px;
+            border-radius: var(--radius-xs);
+            border: 1px solid var(--border);
+            font-size: 13px;
+            font-family: var(--font-body);
+            background: var(--surface);
+            outline: none;
+        }
+        .inspector-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+        }
+
+        /* ============================================================
+           Table — Clean professional data display
+           ============================================================ */
+        #tableContainer {
+            margin: 12px 0;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: var(--shadow-xs);
+        }
+
+        #tableContainer > div {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            font-family: var(--font-body);
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 9px 7px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #F1F5F9;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            border-bottom: 2px solid var(--border);
+        }
+
+        tbody tr {
+            transition: background var(--transition-fast);
+        }
+
+        tbody tr:hover {
+            background: #F8FAFC;
+        }
+
+        tbody tr:nth-child(even) {
+            background: #FAFBFC;
+        }
+        tbody tr:nth-child(even):hover {
+            background: #F1F5F9;
+        }
+
+        /* Result cells */
+        .result-normal {
+            background: #ECFDF5;
+            color: #065F46;
+            font-size: 18px;
+            font-weight: 700;
+            font-family: var(--font-heading);
+        }
+
+        .result-abnormal {
+            background: #FEF2F2;
+            color: #991B1B;
+            font-size: 18px;
+            font-weight: 700;
+            font-family: var(--font-heading);
+        }
+
+        /* Uninspected row */
+        .row-uninspected {
+            opacity: 0.55;
+        }
+
+        /* Point inspector row */
+        .inspector-row {
+            background: #F8FAFC !important;
+            font-weight: 600;
+        }
+        .inspector-row td {
+            border-top: 2px solid var(--border);
+        }
+
+        /* ============================================================
+           Summary Cards — Dashboard KPI style
+           ============================================================ */
+        #frequencySummaryBar {
+            margin: 12px 0;
+            padding: 18px 22px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .freq-section {
+            margin-bottom: 12px;
+        }
+        .freq-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .freq-section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .freq-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-family: var(--font-heading);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            min-width: 56px;
+        }
+
+        .freq-badge.daily   { background: #EFF6FF; color: #1E40AF; }
+        .freq-badge.weekly  { background: #FEF3C7; color: #92400E; }
+        .freq-badge.monthly { background: #F3E8FF; color: #6B21A8; }
+
+        .summary-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .summary-card {
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            text-align: center;
+            min-width: 90px;
+            flex: 1;
+            transition: all var(--transition-fast);
+            box-shadow: var(--shadow-xs);
+        }
+
+        .summary-card:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .summary-card .summary-label {
+            display: block;
+            font-size: 11px;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card .summary-value {
+            display: block;
+            font-size: 24px;
+            font-weight: 700;
+            font-family: var(--font-heading);
+            color: var(--text);
+            line-height: 1.2;
+        }
+
+        .summary-card .summary-value-small {
+            display: block;
+            font-size: 12px;
+            font-family: var(--font-body);
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-top: 2px;
+        }
+
+        /* Status variants */
+        .summary-card.inspected {
+            background: var(--success-light);
+            border-color: var(--success-border);
+        }
+        .summary-card.inspected .summary-value {
+            color: #059669;
+        }
+
+        .summary-card.uninspected {
+            background: var(--danger-light);
+            border-color: var(--danger-border);
+        }
+        .summary-card.uninspected .summary-value {
+            color: var(--danger);
+        }
+
+        /* Warning card (abnormal items) */
+        .summary-card.warning-card {
+            background: var(--warning-light);
+            border-color: var(--warning-border);
+        }
+        .summary-card.warning-card .summary-value {
+            color: #B45309;
+        }
+
+        /* ============================================================
+           Loading State
+           ============================================================ */
+        .loading {
+            text-align: center;
+            padding: 64px 20px;
+            font-size: 15px;
+            color: var(--text-muted);
+            font-family: var(--font-body);
+        }
+
+        .loading::before {
+            content: '';
+            display: block;
+            width: 36px;
+            height: 36px;
+            margin: 0 auto 16px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================================================
+           Footer
+           ============================================================ */
+        .footer {
+            margin: 0 24px;
+            padding: 16px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            font-family: var(--font-body);
+        }
+
+        /* ============================================================
+           Modal — Clean modern overlay
+           ============================================================ */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15,23,42,0.50);
+            backdrop-filter: blur(4px);
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: var(--surface);
+            margin: 10% auto;
+            padding: 32px 28px;
+            border-radius: var(--radius-lg);
+            width: 400px;
+            max-width: 92vw;
+            box-shadow: var(--shadow-lg), 0 0 0 1px rgba(0,0,0,0.05);
+            animation: modalSlideUp 0.25s ease;
+        }
+
+        @keyframes modalSlideUp {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .modal-content h3 {
+            margin-bottom: 24px;
+            text-align: center;
+            font-family: var(--font-heading);
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            letter-spacing: 0.3px;
+        }
+
+        .modal-content .form-group {
+            margin-bottom: 16px;
+        }
+
+        .modal-content .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .modal-content .form-group select,
+        .modal-content .form-group input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: var(--font-body);
+            color: var(--text);
+            background: var(--bg-alt);
+            outline: none;
+            transition: all var(--transition-fast);
+        }
+
+        .modal-content .form-group select:focus,
+        .modal-content .form-group input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-ring);
+            background: var(--surface);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 24px;
+        }
+
+        .modal-buttons button {
+            padding: 10px 24px;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 14px;
+            font-family: var(--font-heading);
+            font-weight: 600;
+            min-width: 90px;
+            transition: all var(--transition-fast);
+        }
+
+        .btn-login-modal {
+            background: var(--primary);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-login-modal:hover { background: var(--primary-light); box-shadow: var(--shadow); }
+
+        .btn-cancel-login {
+            background: #F1F5F9;
+            color: var(--text-secondary);
+            border: 1px solid var(--border) !important;
+        }
+        .btn-cancel-login:hover { background: #E2E8F0; }
+
+        /* ============================================================
+           Print-specific element
+           ============================================================ */
+        .print-only {
+            display: none;
+        }
+
+        /* ============================================================
+           Scrollbar — Custom minimal
+           ============================================================ */
+        ::-webkit-scrollbar {
+            width: 7px;
+            height: 7px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+
+        /* ============================================================
+           Reduced Motion
+           ============================================================ */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* ============================================================
+           Print Styles
+           ============================================================ */
+        @media print {
+            @page {
+                size: A3 landscape;
+                margin: 8mm;
+            }
+            body {
+                background: white;
+                padding: 0;
+                font-family: 'Microsoft YaHei', Arial, sans-serif;
+            }
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+                padding: 5px;
+                max-width: none;
+                overflow: visible;
+                border: none;
+            }
+            .filters, .user-bar, .status-bar, .error-bar, .footer, .btn, .btn-nav, .logout-btn,
+            .btn-all-sign, .btn-export-all, #summaryBar, #frequencySummaryBar,
+            .header-mark, .header::before, .header::after {
+                display: none !important;
+            }
+            .header {
+                background: none !important;
+                padding: 16px 20px 20px !important;
+                text-align: center;
+            }
+            .header h1 {
+                color: #1E293B !important;
+                font-size: 22px;
+            }
+            .print-only {
+                display: block !important;
+            }
+            .row-uninspected {
+                display: none !important;
+            }
+            .stamp-role-label {
+                font-size: 9px;
+                color: #555 !important;
+            }
+            .header .stamp-role-label {
+                color: #555 !important;
+            }
+            .stamp-seal {
+                width: 55px;
+                height: 55px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .stamp-name { font-size: 12px; }
+            .stamp-seal.unsigned .stamp-name { color: #bbb !important; }
+            .stamp-seal.unsigned { border-color: #bbb !important; }
+
+            #tableContainer {
+                overflow: visible !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            #tableContainer > div {
+                overflow: visible !important;
+            }
+            table {
+                font-size: 10px;
+                page-break-inside: auto;
+                border-collapse: collapse;
+            }
+            th, td {
+                padding: 3px 4px;
+                min-width: auto !important;
+            }
+            th {
+                background: #f2f2f2 !important;
+                position: static;
+                color: #333 !important;
+            }
+            thead { display: table-header-group; }
+            tr { page-break-inside: avoid; }
+            .result-normal, .result-abnormal {
+                font-size: 15px;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .content-body { padding: 0; }
+        }
+
+        /* ============================================================
+           Responsive — Mobile & Tablet
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .header {
+                padding: 26px 24px 32px;
+            }
+            .header h1 { font-size: 22px; }
+            .header-content { flex-direction: column; gap: 10px; align-items: center; }
+            .header-stamps { position: static; transform: none; gap: 20px; }
+        }
+
+        @media (max-width: 768px) {
+            body { padding: 8px; }
+            .container { border-radius: var(--radius); }
+            .header {
+                padding: 22px 16px 28px;
+            }
+            .header h1 { font-size: 18px; }
+            .header-mark { width: 34px; height: 34px; }
+            .header-mark svg { width: 18px; height: 18px; }
+
+            .stamp-role-label { font-size: 11px; color: var(--text-secondary); }
+            .header .stamp-role-label { font-size: 11px; color: rgba(255, 255, 255, 0.80); }
+            .header-stamps { gap: 14px; }
+            .stamp-seal { width: 48px; height: 48px; }
+            .stamp-name { font-size: 11px; }
+
+            .content-body { padding: 10px 12px 0; }
+
+            .filters {
+                margin: 0;
+                padding: 12px 14px;
+                gap: 10px;
+            }
+            .filter-item select,
+            .filter-item input { min-width: 100px; font-size: 13px; }
+            .stat-input { width: 64px !important; min-width: 64px !important; font-size: 14px !important; }
+
+            .btn { font-size: 12px; height: 34px; min-width: 64px; padding: 7px 12px; }
+
+            table { font-size: 10px; }
+            th, td { padding: 5px 3px; }
+            th { font-size: 10px; }
+            #tableContainer { margin: 8px 0; }
+
+            .summary-card { padding: 10px 10px; min-width: 64px; }
+            .summary-card .summary-value { font-size: 20px; }
+            .summary-card .summary-label { font-size: 10px; }
+
+            #frequencySummaryBar {
+                margin: 8px 0;
+                padding: 12px 14px;
+            }
+
+            .user-bar, .status-bar, .error-bar {
+                margin: 8px 0;
+                font-size: 12px;
+            }
+
+            .footer { margin: 0 12px; }
+
+            .modal-content {
+                margin: 15% auto;
+                padding: 24px 18px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 { font-size: 16px; letter-spacing: 1px; }
+            .stamp-seal { width: 40px; height: 40px; border-width: 2px; }
+            .stamp-name { font-size: 10px; letter-spacing: 2px; }
+            .stamp-role-label { font-size: 10px; letter-spacing: 2px; }
+            .header .stamp-role-label { font-size: 10px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.80); }
+            .header-stamps { gap: 10px; }
+            .stamp-seal::before { top: 4px; left: 4px; right: 4px; bottom: 4px; }
+
+            .btn-group { gap: 6px; }
+            .btn { font-size: 11px; height: 32px; min-width: 52px; padding: 6px 10px; }
+
+            .summary-bar { gap: 6px; }
+            .summary-card { padding: 8px 8px; min-width: 56px; }
+            .summary-card .summary-value { font-size: 18px; }
+        }
+
+        /* ============================================================
+           Uninspected Monthly Panel
+           ============================================================ */
+        #uninspectedMonthlyPanel {
+            margin: 12px 0;
+            padding: 18px 22px;
+            background: var(--danger-light);
+            border: 1px solid var(--danger-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-xs);
+        }
+
+        #uninspectedMonthlyPanel.all-clear {
+            background: var(--success-light);
+            border-color: var(--success-border);
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            font-family: var(--font-heading);
+            font-size: 15px;
+            font-weight: 600;
+            color: #991B1B;
+        }
+
+        #uninspectedMonthlyPanel.all-clear .panel-header {
+            color: #065F46;
+        }
+
+        .uninspected-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .uninspected-table th {
+            background: rgba(239,68,68,0.08);
+            font-family: var(--font-heading);
+            font-weight: 600;
+            font-size: 11px;
+            color: #991B1B;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .uninspected-table td {
+            color: #7F1D1D;
+        }
+
+        /* mobile */
+        @media (max-width: 768px) {
+            #uninspectedMonthlyPanel {
+                padding: 12px 14px;
+            }
+            .uninspected-table {
+                font-size: 11px;
+            }
+            .uninspected-table th, .uninspected-table td {
+                padding: 5px 3px;
+            }
+        }
+
+        /* ============================================================
+           Out-of-range numeric result
+           ============================================================ */
+        .result-outofrange {
+            color: #DC2626 !important;
+            font-weight: 700;
+            cursor: default;
+        }
+
+        /* ============================================================
+           Remark Tooltip
+           ============================================================ */
+        .result-abnormal {
+            cursor: pointer;
+        }
+
+        .remark-tooltip {
+            position: absolute;
+            z-index: 999;
+            max-width: 220px;
+            padding: 8px 12px;
+            background: rgba(30, 41, 59, 0.92);
+            color: #FFFFFF;
+            font-size: 12px;
+            font-family: var(--font-body);
+            border-radius: var(--radius-xs);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+            line-height: 1.5;
+            pointer-events: none;
+            animation: tooltipFadeIn 0.15s ease;
+        }
+
+        .remark-tooltip::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 6px solid rgba(30, 41, 59, 0.92);
+        }
+
+        .remark-tooltip.above::after {
+            bottom: auto;
+            top: -6px;
+            border-top: none;
+            border-bottom: 6px solid rgba(30, 41, 59, 0.92);
+        }
+
+        @keyframes tooltipFadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ============================================================
+           Photo Lightbox
+           ============================================================ */
+        .photo-indicator {
+            display: inline-block;
+            margin-left: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            vertical-align: top;
+            color: #3B82F6;
+        }
+        .photo-indicator:hover { color: #1D4ED8; }
+
+        .row-pending-photo {
+            border-left: 3px solid #F59E0B !important;
+        }
+        .row-pending-photo td:first-child::before {
+            content: '⚠️ ';
+            color: #F59E0B;
+            font-size: 12px;
+        }
+
+        .lightbox {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            z-index: 9999;
+        }
+        .lightbox.active { display: flex; }
+
+        .lightbox-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.88);
+        }
+
+        .lightbox-content {
+            position: relative;
+            margin: auto;
+            max-width: 90vw;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .lightbox-content img {
+            max-width: 90vw;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+
+        .lightbox-info {
+            color: #E2E8F0;
+            font-size: 13px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .lightbox-close, .lightbox-prev, .lightbox-next {
+            position: absolute;
+            background: rgba(0,0,0,0.5);
+            color: #fff;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 4px;
+        }
+        .lightbox-close { top: 10px; right: 10px; }
+        .lightbox-prev  { left: 10px; top: 50%; transform: translateY(-50%); }
+        .lightbox-next  { right: 10px; top: 50%; transform: translateY(-50%); }
+
+        .lightbox-close:hover, .lightbox-prev:hover, .lightbox-next:hover {
+            background: rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ============================================================
+             Header
+             ============================================================ -->
+        <div class="header">
+            <div class="header-content">
+                <div class="header-title">
+                    <!-- Brand mark -->
+                    <div class="header-mark">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="3"/>
+                            <path d="M9 3v18"/>
+                            <path d="M3 9h18"/>
+                            <path d="M8 12l3 3 5-5"/>
+                        </svg>
+                    </div>
+                    <h1>设备治工具点检表</h1>
+                </div>
+                <!-- Signature stamps — right side of header -->
+                <div class="header-stamps">
+                    <div class="stamp-item">
+                        <span class="stamp-role-label">承 认</span>
+                        <div class="stamp-seal unsigned" id="stampApprover">
+                            <span class="stamp-name" id="approverText">未签</span>
+                        </div>
+                    </div>
+                    <div class="stamp-item">
+                        <span class="stamp-role-label">确 认</span>
+                        <div class="stamp-seal unsigned" id="stampConfirmer">
+                            <span class="stamp-name" id="confirmerText">未签</span>
+                        </div>
+                    </div>
+                    <div class="stamp-item">
+                        <span class="stamp-role-label">担 当</span>
+                        <div class="stamp-seal unsigned" id="stampOperator">
+                            <span class="stamp-name" id="operatorText">未签</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Print: device info (hidden on screen) -->
+            <div id="printDeviceInfo" class="print-only" style="text-align:center;font-size:14px;color:#333;margin-bottom:5px;"></div>
+        </div>
+
+        <!-- ============================================================
+             Content Body
+             ============================================================ -->
+        <div class="content-body">
+            <!-- Filters -->
+            <div class="filters" id="signatureCorner">
+                <div class="filter-item">
+                    <label>设备名称</label>
+                    <div class="input-row">
+                        <select id="deviceSelect" style="flex:1;">
+                            <option value="">请选择设备</option>
+                        </select>
+                        <div class="device-nav-stack">
+                            <button class="btn btn-nav" onclick="prevDevice()" title="上一个设备">▲</button>
+                            <button class="btn btn-nav" onclick="nextDevice()" title="下一个设备">▼</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-item">
+                    <label>点检年份</label>
+                    <select id="yearSelect"></select>
+                </div>
+                <div class="filter-item">
+                    <label>点检月份</label>
+                    <select id="monthSelect"></select>
+                </div>
+                <div class="filter-item">
+                    <label>设备总数</label>
+                    <input type="text" id="totalDeviceCount" value="0" readonly class="stat-input">
+                </div>
+                <div class="filter-item">
+                    <label>已签设备</label>
+                    <input type="text" id="signedDeviceCount" value="0" readonly class="stat-input">
+                </div>
+                <div class="filter-item" style="flex-direction:row;align-items:flex-end;gap:10px;">
+                    <button class="btn btn-primary" onclick="loadData()">查询</button>
+                    <button class="btn btn-confirm" onclick="confirmSign()" id="confirmBtn">盖章签名</button>
+                    <button class="btn btn-all-sign" onclick="batchSignAll()" id="batchSignBtn">批量签章</button>
+                    <button class="btn btn-pdf" onclick="exportPDF()">导出PDF</button>
+                    <button class="btn btn-export-all" onclick="batchExportAll()" id="batchExportBtn">一键导出</button>
+                    <button class="btn btn-import-plan" onclick="importPlan()">导入计划</button>
+                </div>
+            </div>
+
+            <!-- User info bar -->
+            <div id="userBar" class="info-bar user-bar" style="display:none;">
+                <div class="user-info-section">
+                    <div class="user-avatar" id="userAvatar">U</div>
+                    <span id="userInfo"></span>
+                    <span id="inspectorSpan" style="display:none;">
+                        点检者：
+                        <select id="inspectorSelect" class="inspector-select" onchange="onInspectorChange()">
+                            <option value="">选择点检者</option>
+                        </select>
+                    </span>
+                </div>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+
+            <div id="statusBar" class="info-bar status-bar" style="display:none;"></div>
+            <div id="errorBar" class="info-bar error-bar" style="display:none;"></div>
+
+            <!-- Table -->
+            <div id="tableContainer">
+                <div class="loading">请先登录，然后选择设备、年份/月份并点击查询</div>
+            </div>
+
+            <!-- Frequency summary -->
+            <div id="frequencySummaryBar" style="display:none;">
+                <!-- Daily -->
+                <div class="freq-section">
+                    <div class="freq-section-header">
+                        <span class="freq-badge daily">日点检</span>
+                    </div>
+                    <div class="summary-bar">
+                        <div class="summary-card">
+                            <span class="summary-label">设备总数</span>
+                            <span class="summary-value" id="dailyTotal">-</span>
+                        </div>
+                        <div class="summary-card inspected">
+                            <span class="summary-label">已点检</span>
+                            <span class="summary-value" id="dailyInspected">-</span>
+                        </div>
+                        <div class="summary-card uninspected">
+                            <span class="summary-label">未点检</span>
+                            <span class="summary-value" id="dailyUninspected">-</span>
+                        </div>
+                        <div class="summary-card warning-card">
+                            <span class="summary-label">异常点检</span>
+                            <span class="summary-value" id="dailyAbnormal">-</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Weekly -->
+                <div class="freq-section">
+                    <div class="freq-section-header">
+                        <span class="freq-badge weekly">周点检</span>
+                    </div>
+                    <div class="summary-bar">
+                        <div class="summary-card">
+                            <span class="summary-label">设备总数</span>
+                            <span class="summary-value" id="weeklyTotal">-</span>
+                        </div>
+                        <div class="summary-card inspected">
+                            <span class="summary-label">已点检</span>
+                            <span class="summary-value" id="weeklyInspected">-</span>
+                        </div>
+                        <div class="summary-card uninspected">
+                            <span class="summary-label">未点检</span>
+                            <span class="summary-value" id="weeklyUninspected">-</span>
+                        </div>
+                        <div class="summary-card warning-card">
+                            <span class="summary-label">异常点检</span>
+                            <span class="summary-value" id="weeklyAbnormal">-</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Monthly -->
+                <div class="freq-section">
+                    <div class="freq-section-header">
+                        <span class="freq-badge monthly">月点检</span>
+                    </div>
+                    <div class="summary-bar">
+                        <div class="summary-card">
+                            <span class="summary-label">设备总数</span>
+                            <span class="summary-value" id="monthlyTotal">-</span>
+                        </div>
+                        <div class="summary-card inspected">
+                            <span class="summary-label">已点检</span>
+                            <span class="summary-value" id="monthlyInspected">-</span>
+                        </div>
+                        <div class="summary-card uninspected">
+                            <span class="summary-label">未点检</span>
+                            <span class="summary-value" id="monthlyUninspected">-</span>
+                        </div>
+                        <div class="summary-card warning-card">
+                            <span class="summary-label">异常点检</span>
+                            <span class="summary-value" id="monthlyAbnormal">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Uninspected Monthly Panel -->
+            <div id="uninspectedMonthlyPanel" style="display:none;">
+                <div class="panel-header" id="uninspectedPanelHeader">
+                    ⚠️ 当月未点检设备
+                </div>
+                <div id="uninspectedPanelContent"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <small>备注：正常标记为 "○"，异常标记为 "×"，未点检标记为 "/"</small>
+        </div>
+    </div>
+
+    <!-- Hidden file input for plan import -->
+    <input type="file" id="planFileInput" accept=".xlsx" style="display:none" onchange="uploadPlan(event)">
+
+    <!-- ============================================================
+         Login Modal
+         ============================================================ -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h3>用户登录</h3>
+            <div class="form-group">
+                <label>姓名</label>
+                <select id="usernameSelect">
+                    <option value="">请选择姓名</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" id="passwordInput" placeholder="请输入密码" onkeypress="if(event.keyCode===13) login()">
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-login-modal" onclick="login()">登录</button>
+                <button class="btn-cancel-login" onclick="closeLoginModal()">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         Photo Lightbox
+         ============================================================ -->
+    <div id="photoLightbox" class="lightbox">
+        <div class="lightbox-overlay"></div>
+        <div class="lightbox-content">
+            <img id="lightboxImg" src="" alt="点检照片" />
+            <div class="lightbox-info">
+                <span id="lightboxItem"></span>
+                <span id="lightboxCounter"></span>
+            </div>
+            <button class="lightbox-prev" title="上一张">‹</button>
+            <button class="lightbox-next" title="下一张">›</button>
+            <button class="lightbox-close" title="关闭">✕</button>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         Scripts
+         ============================================================ -->
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js"
+        onerror="loadFallback('axios','./axios.min.js')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"
+        onerror="loadFallback('html2canvas','./html2canvas.min.js')"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+        onerror="loadFallback('jspdf','./jspdf.umd.min.js')"></script>
+    <script>
+    (function(){window.loadFallback=function(n,p){console.warn('[CDN] '+n+' 本地降级');var s=document.createElement('script');s.src=p;s.onerror=function(){var e=document.getElementById('errorBar');if(e){e.style.display='block';e.textContent='⚠️ '+n+' 加载失败'}};document.head.appendChild(s);};})();
+    </script>
+    <script>
+        // ==================== API 配置 ====================
+        var API_SERVER_IP = '192.168.5.6';
+        var API_PORT = '8800';
+        var API_BASE_URL = (function() {
+            var h = window.location.hostname;
+            var p = window.location.protocol;
+            if (p === 'file:') return 'http://' + API_SERVER_IP + ':' + API_PORT;
+            if (!h) return 'http://' + API_SERVER_IP + ':' + API_PORT;
+            if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:' + API_PORT;
+            return 'http://' + h + ':' + API_PORT;
+        })();
+        console.log('[API] ' + API_BASE_URL);
+
+        // ==================== 全局变量 ====================
+        let currentDevice = null;
+        let currentYear = null;
+        let currentMonth = null;
+        let templatesData = [];
+        let recordsData = [];
+        let currentUser = null;
+
+        // 照片数据 — {recordId}_{itemName} → [photo objects]
+        let photoMap = {};
+        // 当月每 record 的 status — {recordId: status}
+        let recordStatusMap = {};
+        // Lightbox 状态
+        let lightboxPhotos = [];
+        let lightboxIndex = 0;
+        let currentInspectorId = null;  // 当前选中的点检者工号
+
+        // 签名数据
+        let signatures = {
+            approver: '',
+            confirmer: '',
+            operatorName: ''
+        };
+
+
+        // HTML 转义
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+
+        // ==================== 辅助函数 ====================
+
+        function showError(message) {
+            const errorBar = document.getElementById('errorBar');
+            errorBar.textContent = message;
+            errorBar.style.display = 'flex';
+            setTimeout(() => {
+                errorBar.style.display = 'none';
+            }, 5000);
+        }
+
+        function showStatus(message) {
+            const statusBar = document.getElementById('statusBar');
+            statusBar.textContent = message;
+            statusBar.style.display = 'flex';
+            setTimeout(() => {
+                statusBar.style.display = 'none';
+            }, 3000);
+        }
+
+        // 更新印章显示
+        function updateSignatureDisplay() {
+            updateStamp('stampApprover', 'approverText', signatures.approver);
+            updateStamp('stampConfirmer', 'confirmerText', signatures.confirmer);
+            updateStamp('stampOperator', 'operatorText', signatures.operatorName);
+        }
+
+        function updateStamp(sealId, nameId, nameValue) {
+            const seal = document.getElementById(sealId);
+            const nameEl = document.getElementById(nameId);
+            if (nameValue) {
+                seal.classList.remove('unsigned');
+                const chars = nameValue.split('');
+                if (chars.length <= 2) {
+                    // 单列竖排
+                    nameEl.innerHTML = chars.join('');
+                    nameEl.style.cssText = 'writing-mode:vertical-rl;letter-spacing:4px;';
+                } else if (chars.length === 3) {
+                    // 左1右2，左侧居中
+                    nameEl.innerHTML = `<span style="writing-mode:vertical-rl;letter-spacing:3px;align-self:center;">${chars[0]}</span><span style="writing-mode:vertical-rl;letter-spacing:3px;margin-left:3px;">${chars[1]}${chars[2]}</span>`;
+                    nameEl.style.cssText = 'writing-mode:horizontal-tb;display:flex;align-items:stretch;justify-content:center;';
+                } else {
+                    // 左右各半
+                    const mid = Math.ceil(chars.length / 2);
+                    nameEl.innerHTML = `<span style="writing-mode:vertical-rl;letter-spacing:3px;">${chars.slice(0,mid).join('')}</span><span style="writing-mode:vertical-rl;letter-spacing:3px;margin-left:3px;">${chars.slice(mid).join('')}</span>`;
+                    nameEl.style.cssText = 'writing-mode:horizontal-tb;display:flex;align-items:center;justify-content:center;';
+                }
+            } else {
+                seal.classList.add('unsigned');
+                nameEl.textContent = '未签';
+                nameEl.style.cssText = 'writing-mode:vertical-rl;letter-spacing:1px;';
+            }
+        }
+
+        // ==================== 设备名称上翻/下翻 ====================
+        function prevDevice() {
+            const select = document.getElementById('deviceSelect');
+            if (select.options.length <= 1) return;  // 只有"请选择设备"选项，无需翻页
+            if (select.selectedIndex > 1) {
+                select.selectedIndex--;
+                if (select.value) loadData();
+            } else {
+                alert('已经是第一个设备，没有更早的了');
+            }
+        }
+
+        function nextDevice() {
+            const select = document.getElementById('deviceSelect');
+            if (select.options.length <= 1) return;
+            if (select.selectedIndex < select.options.length - 1) {
+                select.selectedIndex++;
+                if (select.value) loadData();
+            } else {
+                alert('已经是最后一个设备，没有更多的了');
+            }
+        }
+
+        // ==================== 初始化 ====================
+        function initDateSelectors() {
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+
+            const currentYear = new Date().getFullYear();
+            for (let year = currentYear - 2; year <= currentYear + 2; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = `${year}年`;
+                if (year === currentYear) option.selected = true;
+                yearSelect.appendChild(option);
+            }
+
+            for (let month = 1; month <= 12; month++) {
+                const option = document.createElement('option');
+                option.value = month;
+                option.textContent = `${month}月`;
+                if (month === new Date().getMonth() + 1) option.selected = true;
+                monthSelect.appendChild(option);
+            }
+        }
+
+        // ==================== API 调用 ====================
+        async function loadDevices() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/devices`);
+                const devices = response.data;
+                const select = document.getElementById('deviceSelect');
+                select.innerHTML = '<option value="">请选择设备</option>';
+
+                if (!devices || devices.length === 0) {
+                    select.innerHTML = '<option value="">暂无设备</option>';
+                    showError('设备列表为空，请先添加设备');
+                    return;
+                }
+
+                devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceModel;
+                    option.textContent = `${device.deviceName} (${device.deviceModel})`;
+                    select.appendChild(option);
+                });
+
+                console.log('设备列表加载成功:', devices.length, '个设备');
+                // 更新设备总数和月度摘要
+                updateSignSummary();
+                loadMonthlySummary();
+            } catch (error) {
+                console.error('加载设备列表失败:', error);
+                showError('加载设备列表失败：' + (error.message || '网络错误'));
+            }
+        }
+
+        // 加载用户列表
+        async function loadUsers() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/users/list`);
+                const users = response.data.items || response.data;
+                const select = document.getElementById('usernameSelect');
+                select.innerHTML = '<option value="">请选择姓名</option>';
+
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify(user);
+                    option.textContent = `${user.fullName} (${user.role === 'operator' ? '担当' : user.role === 'confirmer' ? '确认' : '承认'})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载用户列表失败:', error);
+            }
+        }
+
+        // 加载点检资格人员列表
+        async function loadInspectorList() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/operators/list`);
+                const select = document.getElementById('inspectorSelect');
+                // 保留第一个"选择点检者"选项
+                select.innerHTML = '<option value="">选择点检者</option>';
+                const operators = response.data.items || response.data;
+                operators.forEach(op => {
+                    const option = document.createElement('option');
+                    option.value = op.employeeId;
+                    option.textContent = `${op.lastName} (${op.employeeId})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载点检者列表失败:', error);
+            }
+        }
+
+        function onInspectorChange() {
+            const select = document.getElementById('inspectorSelect');
+            currentInspectorId = select.value || null;
+        }
+
+        async function loadTemplates(deviceModel) {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/templates/${deviceModel}`);
+                return response.data;
+            } catch (error) {
+                console.error('加载点检模板失败:', error);
+                throw error;
+            }
+        }
+
+        async function loadRecords(deviceModel, year, month) {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/records/monthly`, {
+                    params: { deviceModel, year, month }
+                });
+                console.log('API返回的记录:', response.data);
+                return response.data.items || response.data;
+            } catch (error) {
+                console.error('加载记录失败:', error);
+                return [];
+            }
+        }
+
+        // 加载当月所有照片（批量，避免 N+1）
+        async function loadMonthlyPhotos(deviceModel, year, month) {
+            photoMap = {};
+            recordStatusMap = {};
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/photos/monthly`, {
+                    params: { deviceModel, year, month }
+                });
+                const photos = response.data || [];
+                photos.forEach(p => {
+                    const key = `${p.recordId}_${p.itemName}`;
+                    if (!photoMap[key]) photoMap[key] = [];
+                    photoMap[key].push(p);
+                });
+                // 构建 status map（在 renderReadOnlyTable 中会用到 recordsData 里的 status）
+                if (recordsData && recordsData.length > 0) {
+                    recordsData.forEach(r => {
+                        if (r.recordId && r.status) {
+                            recordStatusMap[r.recordId] = r.status;
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('加载照片失败:', error);
+            }
+        }
+
+        // 加载每日点检者映射
+        async function loadDailyInspectors(deviceModel, year, month) {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/operators/daily`, {
+                    params: { deviceModel, year, month }
+                });
+                return response.data.inspectors || {};
+            } catch (error) {
+                console.error('加载每日点检者失败:', error);
+                return {};
+            }
+        }
+
+        // 从数据库加载签名
+        async function loadSignaturesFromDB() {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/signatures/get`, {
+                    params: {
+                        deviceModel: currentDevice,
+                        year: currentYear,
+                        month: currentMonth
+                    }
+                });
+                signatures = {
+                    approver: response.data.approver || '',
+                    confirmer: response.data.confirmer || '',
+                    operatorName: response.data.operatorName || ''
+                };
+                updateSignatureDisplay();
+                console.log('签名加载成功:', signatures);
+            } catch (error) {
+                console.error('加载签名失败:', error);
+                signatures = { approver: '', confirmer: '', operatorName: '' };
+                updateSignatureDisplay();
+            }
+        }
+
+        // 更新签名统计（设备总数 / 已签设备数）
+        async function updateSignSummary() {
+            // 设备总数 = 下拉菜单中实际设备的数量（排除"请选择设备"占位项）
+            const select = document.getElementById('deviceSelect');
+            const totalDevices = select.options.length > 1 ? select.options.length - 1 : 0;
+            document.getElementById('totalDeviceCount').value = totalDevices;
+
+            if (!currentUser || !currentYear || !currentMonth) {
+                document.getElementById('signedDeviceCount').value = 0;
+                return;
+            }
+
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/signatures/sign-summary`, {
+                    params: {
+                        year: currentYear,
+                        month: currentMonth,
+                        role: currentUser.role,
+                        fullName: currentUser.fullName
+                    }
+                });
+                document.getElementById('signedDeviceCount').value = response.data.signedCount;
+                document.getElementById('totalDeviceCount').value = response.data.totalDevices;
+
+                // 有漏签时标红提醒
+                const signedInput = document.getElementById('signedDeviceCount');
+                if (response.data.unsignedCount > 0) {
+                    signedInput.style.background = '#FFFBEB';
+                    signedInput.style.color = '#B45309';
+                    signedInput.style.borderColor = '#FDE68A';
+                } else {
+                    signedInput.style.background = '#ECFDF5';
+                    signedInput.style.color = '#065F46';
+                    signedInput.style.borderColor = '#A7F3D0';
+                }
+            } catch (error) {
+                console.error('获取签名统计失败:', error);
+                document.getElementById('signedDeviceCount').value = '?';
+            }
+        }
+
+        // 加载月度摘要：所有设备的点检状态 + 更新统计卡片和下拉标记
+        async function loadMonthlySummary() {
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            if (!yearSelect || !monthSelect) return;
+
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+            if (!year || !month) return;
+
+            const freqBar = document.getElementById('frequencySummaryBar');
+
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/frequency-summary`, {
+                    params: { year, month }
+                });
+                const data = response.data;
+
+                if (freqBar) freqBar.style.display = 'block';
+
+                fillFrequencyRow('daily',   data.daily);
+                fillFrequencyRow('weekly',  data.weekly);
+                fillFrequencyRow('monthly', data.monthly);
+
+                loadUninspectedMonthly();
+
+            } catch (error) {
+                console.error('加载频率摘要失败:', error);
+                ['daily','weekly','monthly'].forEach(f => {
+                    document.getElementById(f + 'Total').textContent = '-';
+                    document.getElementById(f + 'Inspected').textContent = '-';
+                    document.getElementById(f + 'Uninspected').textContent = '-';
+                    document.getElementById(f + 'Abnormal').textContent = '-';
+                });
+            }
+        }
+
+        function fillFrequencyRow(prefix, stats) {
+            if (!stats) return;
+            document.getElementById(prefix + 'Total').textContent = stats.totalDevices;
+            document.getElementById(prefix + 'Inspected').textContent = stats.inspectedDevices;
+            // 未点检：数量 + 设备清单
+            var uniVal = document.getElementById(prefix + 'Uninspected');
+            var uninspectedNames = (stats.uninspectedDeviceModels || []).join('、');
+            uniVal.textContent = stats.uninspectedDevices + (uninspectedNames ? ' [' + uninspectedNames + ']' : '');
+            // 异常点检：数量 + 设备清单
+            var abnVal = document.getElementById(prefix + 'Abnormal');
+            var abnormalNames = (stats.abnormalDeviceModels || []).join('、');
+            abnVal.textContent = (stats.abnormalDevices || 0) + (abnormalNames ? ' [' + abnormalNames + ']' : '');
+        }
+
+        // 加载当月完全未点检的设备清单
+        async function loadUninspectedMonthly() {
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            if (!yearSelect || !monthSelect) return;
+
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+            if (!year || !month) return;
+
+            const panel = document.getElementById('uninspectedMonthlyPanel');
+            const header = document.getElementById('uninspectedPanelHeader');
+            const content = document.getElementById('uninspectedPanelContent');
+
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/uninspected-monthly`, {
+                    params: { year, month }
+                });
+                const data = response.data;
+
+                if (!panel) return;
+                panel.style.display = 'block';
+
+                if (data.uninspectedCount === 0) {
+                    panel.classList.add('all-clear');
+                    header.innerHTML = '✅ 当月所有设备均已点检';
+                    content.innerHTML = '';
+                } else {
+                    panel.classList.remove('all-clear');
+                    header.innerHTML = `⚠️ 当月未点检设备（共 ${data.uninspectedCount} 台）`;
+
+                    let html = '<div style="overflow-x:auto;"><table class="uninspected-table">';
+                    html += '<thead><tr><th style="min-width:120px;">设备型号</th><th style="min-width:200px;">所在位置</th></tr></thead>';
+                    html += '<tbody>';
+                    data.uninspectedDevices.forEach(d => {
+                        const loc = d.deviceLocation || '未配置位置';
+                        const name = d.deviceName || d.deviceModel;
+                        html += `<tr><td>${name}</td><td>${loc}</td></tr>`;
+                    });
+                    html += '</tbody></table></div>';
+                    content.innerHTML = html;
+                }
+            } catch (error) {
+                console.error('加载未点检设备清单失败:', error);
+                if (panel) panel.style.display = 'none';
+            }
+        }
+
+        function markUninspectedDevices(uninspectedSet) {
+            const select = document.getElementById('deviceSelect');
+            if (!select || select.options.length <= 1) return;
+
+            for (let i = 1; i < select.options.length; i++) {
+                const option = select.options[i];
+                const deviceModel = option.value;
+                // 移除旧标记
+                const originalText = option.getAttribute('data-original-text') || option.textContent;
+                if (!option.getAttribute('data-original-text')) {
+                    option.setAttribute('data-original-text', originalText);
+                }
+
+                if (uninspectedSet.has(deviceModel)) {
+                    option.textContent = option.getAttribute('data-original-text') + ' ⚠️ 未检';
+                    option.style.color = '#c62828';
+                } else {
+                    option.textContent = option.getAttribute('data-original-text');
+                    option.style.color = '';
+                }
+            }
+        }
+
+        // 自动签名
+        async function autoSign() {
+            if (!currentUser) {
+                showError('请先登录');
+                return false;
+            }
+
+            const requestData = {
+                deviceModel: currentDevice,
+                year: currentYear,
+                month: currentMonth,
+                role: currentUser.role,
+                fullName: currentUser.fullName
+            };
+
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/Inspection/signatures/auto-sign`, requestData);
+                if (response.data.success) {
+                    await loadSignaturesFromDB();
+                    await updateSignSummary();
+                    const roleName = currentUser.role === 'operator' ? '担当' : currentUser.role === 'confirmer' ? '确认' : '承认';
+                    showStatus(`${currentUser.fullName} 已在${roleName}栏签名成功`);
+                    return true;
+                } else {
+                    showError('签名失败：' + response.data.message);
+                    return false;
+                }
+            } catch (error) {
+                console.error('签名失败:', error);
+                showError('签名失败：' + (error.response?.data?.message || error.message));
+                return false;
+            }
+        }
+
+        // ==================== 登录相关 ====================
+        function showLoginModal() {
+            document.getElementById('loginModal').style.display = 'block';
+            loadUsers();
+            document.getElementById('passwordInput').value = '';
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('usernameSelect').value = '';
+            document.getElementById('passwordInput').value = '';
+        }
+
+        async function login() {
+            const userSelect = document.getElementById('usernameSelect');
+            const password = document.getElementById('passwordInput').value;
+
+            if (!userSelect.value) {
+                alert('请选择姓名');
+                return;
+            }
+
+            if (!password) {
+                alert('请输入密码');
+                return;
+            }
+
+            const selectedUser = JSON.parse(userSelect.value);
+
+            const loginData = {
+                username: selectedUser.username,
+                password: password
+            };
+
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/Inspection/users/login`, loginData);
+                if (response.data.success) {
+                    currentUser = response.data;
+                    closeLoginModal();
+
+                    // 显示用户信息栏
+                    const roleName = currentUser.role === 'operator' ? '担当' : currentUser.role === 'confirmer' ? '确认' : '承认';
+                    document.getElementById('userInfo').innerHTML = `当前登录：<strong>${currentUser.fullName}</strong> (${roleName})`;
+                    document.getElementById('userBar').style.display = 'flex';
+
+                    // 更新用户头像
+                    const avatar = document.getElementById('userAvatar');
+                    if (avatar && currentUser.fullName) {
+                        avatar.textContent = currentUser.fullName.charAt(0);
+                    }
+
+                    // 如果是担当角色，显示点检者选择框
+                    if (currentUser.role === 'operator') {
+                        document.getElementById('inspectorSpan').style.display = 'inline';
+                        await loadInspectorList();
+                    }
+
+                    showStatus(`欢迎，${currentUser.fullName}！请选择设备和月份后点击查询`);
+
+                    // 清空表格提示
+                    document.getElementById('tableContainer').innerHTML = '<div class="loading">请选择设备、年份/月份并点击查询</div>';
+                } else {
+                    alert('登录失败：' + response.data.message);
+                }
+            } catch (error) {
+                console.error('登录失败:', error);
+                if (error.response && error.response.status === 401) {
+                    alert('用户名或密码错误');
+                } else {
+                    alert('登录失败：' + (error.response?.data?.message || error.message));
+                }
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            currentInspectorId = null;
+            document.getElementById('inspectorSpan').style.display = 'none';
+            document.getElementById('userBar').style.display = 'none';
+            document.getElementById('tableContainer').innerHTML = '<div class="loading">请先登录，然后选择设备、年份/月份并点击查询</div>';
+            signatures = { approver: '', confirmer: '', operatorName: '' };
+            updateSignatureDisplay();
+            showStatus('已退出登录');
+        }
+
+        // 渲染表格（只读）
+        async function renderReadOnlyTable() {
+            if (!templatesData || templatesData.length === 0) {
+                document.getElementById('tableContainer').innerHTML = '<div class="loading">该设备暂无点检项目</div>';
+                return;
+            }
+
+            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+            // 加载每日点检者
+            const dailyInspectors = await loadDailyInspectors(currentDevice, currentYear, currentMonth);
+
+            // 创建记录映射
+            const recordMap = new Map();
+            recordsData.forEach(record => {
+                const key = `${record.itemName}_${record.inspectionDay}`;
+                recordMap.set(key, record);
+            });
+
+            let html = '<div style="overflow-x: auto;">';
+            html += '<table style="min-width: 800px;">';
+            html += '<thead>';
+            html += '<tr>';
+            html += '<th style="min-width:60px;">编号</th>';
+            html += '<th style="min-width:200px;">项目</th>';
+            html += '<th style="min-width:60px;">内容</th>';
+            html += '<th style="min-width:50px;">周期</th>';
+            for (let day = 1; day <= daysInMonth; day++) {
+                html += `<th style="min-width:50px;">${day}</th>`;
+            }
+            html += '</tr>';
+            html += '</thead>';
+            html += '<tbody>';
+
+            templatesData.forEach((template, index) => {
+                const isNumeric = template.itemType === 'numeric';
+                // 构建内容列文本：数值型显示规格范围+单位，检查型显示"检查"
+                let contentText = '检查/清扫';
+                if (isNumeric) {
+                    const min = template.normalMin;
+                    const max = template.normalMax;
+                    const unit = template.unit || '';
+                    if (min != null && max != null) {
+                        contentText = `${min}-${max} ${unit}`.trim();
+                    } else if (min != null) {
+                        contentText = `≥${min} ${unit}`.trim();
+                    } else if (max != null) {
+                        contentText = `≤${max} ${unit}`.trim();
+                    } else {
+                        contentText = '记录';
+                    }
+                }
+
+                // 检测整行是否未点检（所有日期都是"/"即无记录）
+                let allUninspected = true;
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const key = `${template.itemName}_${day}`;
+                    const record = recordMap.get(key);
+                    const val = record ? record.resultValue : '';
+                    if (val && val !== '' && val !== '/') {
+                        allUninspected = false;
+                        break;
+                    }
+                }
+
+                // 检查该行是否有任何 pending 记录
+                let rowHasPending = false;
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const key = `${template.itemName}_${day}`;
+                    const record = recordMap.get(key);
+                    if (record && record.status === 'pending') { rowHasPending = true; break; }
+                }
+
+                let rowClass = allUninspected ? 'row-uninspected' : '';
+                if (rowHasPending) rowClass += ' row-pending-photo';
+
+                html += '<tr class="' + rowClass + '">';
+                html += `<td style="background:#F8FAFC;font-weight:600;color:var(--text-secondary);">${index + 1}</td>`;
+                html += `<td style="background:#F8FAFC;font-weight:600;text-align:left;padding-left:10px;">${template.itemName}</td>`;
+                html += `<td style="background:#F8FAFC;font-size:11px;color:var(--text-secondary);">${contentText}</td>`;
+                html += `<td style="background:#F8FAFC;font-size:11px;">${template.frequency || '日'}</td>`;
+
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const key = `${template.itemName}_${day}`;
+                    const record = recordMap.get(key);
+                    let value = record ? record.resultValue : '';
+                    let cellClass = '';
+                    let recordIdAttr = '';
+                    let itemNameAttr = '';
+                    let remarkAttr = '';
+                    let isNormalAttr = '';
+
+                    if (record) {
+                        recordIdAttr = ` data-record-id="${record.recordId}"`;
+                        itemNameAttr = ` data-item-name="${escapeHtml(template.itemName)}"`;
+                        isNormalAttr = ` data-isnormal="${record.isNormal}"`;
+                        if (record.remark) {
+                            remarkAttr = ` data-remark="${escapeHtml(record.remark)}"`;
+                        } else {
+                            remarkAttr = ` data-remark=""`;
+                        }
+                    }
+
+                    if (value === '○') cellClass = 'result-normal';
+                    if (value === '×') cellClass = 'result-abnormal';
+
+                    // 超范围数值：isNormal=false 且值不是 ○/×/
+                    if (record && !record.isNormal && value !== '○' && value !== '×' && value !== '/' && value !== '') {
+                        cellClass += ' result-outofrange';
+                    }
+
+                    // 空值或未定义显示 "/"
+                    let displayValue = (value && value !== '') ? value : '/';
+
+                    // 照片标记 — 仅在异常时显示
+                    let photoIndicator = '';
+                    if (record && record.recordId && !record.isNormal) {
+                        const photoKey = `${record.recordId}_${template.itemName}`;
+                        const photos = photoMap[photoKey];
+                        if (photos && photos.length > 0) {
+                            photoIndicator = `<span class="photo-indicator" data-photo-key="${photoKey}">📷${photos.length > 1 ? photos.length : ''}</span>`;
+                        }
+                    }
+
+                    html += `<td class="${cellClass}"${recordIdAttr}${itemNameAttr}${isNormalAttr}${remarkAttr}>${displayValue}${photoIndicator}</td>`;
+                }
+
+                html += '</tr>';
+            });
+
+            // 点检者行
+            html += '<tr class="inspector-row">';
+            html += '<td colspan="3" style="text-align:center;background:#E2E8F0;font-weight:600;font-family:var(--font-heading);font-size:12px;">点检者</td>';
+            html += '<td style="background:#E2E8F0;"></td>';
+            for (let day = 1; day <= daysInMonth; day++) {
+                const name = dailyInspectors[String(day)] || '';
+                html += `<td style="background:#F1F5F9;font-size:11px;">${name}</td>`;
+            }
+            html += '</tr>';
+
+            html += '</tbody>';
+            html += '</table>';
+            html += '</div>';
+
+            document.getElementById('tableContainer').innerHTML = html;
+        }
+
+        // ==================== 异常备注 Tooltip ====================
+        let currentTooltip = null;
+
+        function showRemarkTooltip(cell) {
+            hideRemarkTooltip();
+
+            const remark = cell.getAttribute('data-remark');
+            const remarkText = remark && remark !== '' ? remark : '无备注';
+
+            const tooltip = document.createElement('div');
+            tooltip.className = 'remark-tooltip';
+            tooltip.textContent = '备注：' + remarkText;
+            document.body.appendChild(tooltip);
+
+            // 定位：默认在单元格上方
+            const cellRect = cell.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+
+            let top = cellRect.top - tooltipRect.height - 8;
+            let left = cellRect.left + (cellRect.width - tooltipRect.width) / 2;
+
+            // 如果上方空间不足，显示在下方
+            if (top < 8) {
+                top = cellRect.bottom + 8;
+                tooltip.classList.add('above');
+            }
+
+            // 防止水平溢出
+            if (left < 8) left = 8;
+            if (left + tooltipRect.width > window.innerWidth - 8) {
+                left = window.innerWidth - tooltipRect.width - 8;
+            }
+
+            tooltip.style.top = top + 'px';
+            tooltip.style.left = left + 'px';
+
+            currentTooltip = tooltip;
+        }
+
+        function hideRemarkTooltip() {
+            if (currentTooltip) {
+                currentTooltip.remove();
+                currentTooltip = null;
+            }
+        }
+
+        // 事件委托：点击表格中的异常格
+        document.getElementById('tableContainer').addEventListener('click', function(e) {
+            const cell = e.target.closest('td.result-abnormal');
+            if (!cell) {
+                hideRemarkTooltip();
+                return;
+            }
+            if (!cell.hasAttribute('data-remark')) return;
+
+            // 如果点击的是已经显示 tooltip 的格，关闭
+            if (currentTooltip && currentTooltip._sourceCell === cell) {
+                hideRemarkTooltip();
+                return;
+            }
+
+            showRemarkTooltip(cell);
+            if (currentTooltip) currentTooltip._sourceCell = cell;
+        });
+
+        // 点击页面其他地方关闭 tooltip
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('td.result-abnormal')) {
+                hideRemarkTooltip();
+            }
+        });
+
+        // ==================== 照片 Lightbox ====================
+
+        function openLightbox(photoKey) {
+            const photos = photoMap[photoKey];
+            if (!photos || photos.length === 0) return;
+
+            lightboxPhotos = photos.sort((a, b) => a.photoOrder - b.photoOrder);
+            lightboxIndex = 0;
+            showLightboxImage();
+
+            const lb = document.getElementById('photoLightbox');
+            lb.classList.add('active');
+        }
+
+        function closeLightbox() {
+            const lb = document.getElementById('photoLightbox');
+            lb.classList.remove('active');
+            lightboxPhotos = [];
+            lightboxIndex = 0;
+        }
+
+        function showLightboxImage() {
+            if (lightboxPhotos.length === 0) return;
+            const photo = lightboxPhotos[lightboxIndex];
+            document.getElementById('lightboxImg').src = API_BASE_URL + photo.photoPath;
+            document.getElementById('lightboxItem').textContent = photo.itemName;
+            document.getElementById('lightboxCounter').textContent =
+                lightboxPhotos.length > 1 ?
+                `${lightboxIndex + 1} / ${lightboxPhotos.length}` : '';
+        }
+
+        function lightboxPrev() {
+            if (lightboxPhotos.length <= 1) return;
+            lightboxIndex = (lightboxIndex - 1 + lightboxPhotos.length) % lightboxPhotos.length;
+            showLightboxImage();
+        }
+
+        function lightboxNext() {
+            if (lightboxPhotos.length <= 1) return;
+            lightboxIndex = (lightboxIndex + 1) % lightboxPhotos.length;
+            showLightboxImage();
+        }
+
+        // Lightbox 按钮事件
+        document.getElementById('photoLightbox').addEventListener('click', function(e) {
+            if (e.target.classList.contains('lightbox-overlay')) {
+                closeLightbox();
+            }
+        });
+        document.querySelector('.lightbox-close').addEventListener('click', closeLightbox);
+        document.querySelector('.lightbox-prev').addEventListener('click', function(e) {
+            e.stopPropagation(); lightboxPrev();
+        });
+        document.querySelector('.lightbox-next').addEventListener('click', function(e) {
+            e.stopPropagation(); lightboxNext();
+        });
+
+        // 键盘导航
+        document.addEventListener('keydown', function(e) {
+            const lb = document.getElementById('photoLightbox');
+            if (!lb.classList.contains('active')) return;
+            if (e.key === 'Escape') { closeLightbox(); }
+            if (e.key === 'ArrowLeft') { lightboxPrev(); }
+            if (e.key === 'ArrowRight') { lightboxNext(); }
+        });
+
+        // 点击照片标记时打开 lightbox（事件委托）
+        document.getElementById('tableContainer').addEventListener('click', function(e) {
+            const indicator = e.target.closest('.photo-indicator');
+            if (!indicator) return;
+            e.stopPropagation();
+            const photoKey = indicator.getAttribute('data-photo-key');
+            if (photoKey) openLightbox(photoKey);
+        });
+
+        // ==================== 主要功能 ====================
+        async function loadData() {
+            // 检查是否已登录
+            if (!currentUser) {
+                showLoginModal();
+                return;
+            }
+
+            const deviceSelect = document.getElementById('deviceSelect');
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+
+            currentDevice = deviceSelect.value;
+            currentYear = parseInt(yearSelect.value);
+            currentMonth = parseInt(monthSelect.value);
+
+            if (!currentDevice) {
+                alert('请选择设备');
+                return;
+            }
+
+            document.getElementById('tableContainer').innerHTML = '<div class="loading">加载中...</div>';
+
+            try {
+                const [templates, records] = await Promise.all([
+                    loadTemplates(currentDevice),
+                    loadRecords(currentDevice, currentYear, currentMonth)
+                ]);
+
+                templatesData = templates;
+                recordsData = records;
+
+                // 加载当月所有照片（批量查询，在渲染前完成）
+                await loadMonthlyPhotos(currentDevice, currentYear, currentMonth);
+
+                await renderReadOnlyTable();
+
+                // 从数据库加载��名
+                await loadSignaturesFromDB();
+
+                // 更新签名统计和月度摘要
+                await updateSignSummary();
+                await loadMonthlySummary();
+
+                const deviceName = deviceSelect.options[deviceSelect.selectedIndex]?.text || currentDevice;
+                // 更新打印专用设备信息
+                const printInfo = document.getElementById('printDeviceInfo');
+                if (printInfo) {
+                    printInfo.textContent = `设备：${deviceName} ｜ ${currentYear}年${currentMonth}月`;
+                }
+                showStatus(`当前查看：${deviceName} | ${currentYear}年${currentMonth}月 | 共${templates.length}个点检项目`);
+
+            } catch (error) {
+                document.getElementById('tableContainer').innerHTML = '<div class="loading">加载失败，请重试</div>';
+                showError('加载数据失败：' + (error.response?.data?.message || error.message));
+            }
+        }
+
+        // 确认签名（当前设备）
+        async function confirmSign() {
+            if (!currentUser) {
+                showLoginModal();
+                return;
+            }
+
+            if (!currentDevice) {
+                alert('请先查询设备数据');
+                return;
+            }
+
+            await autoSign();
+        }
+
+        // 批量签章：当前月份所有设备全部签名
+        async function batchSignAll() {
+            if (!currentUser) {
+                showLoginModal();
+                return;
+            }
+
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+
+            if (!year || !month) {
+                alert('请先选择年份和月份');
+                return;
+            }
+
+            // 收集所有设备
+            const deviceSelect = document.getElementById('deviceSelect');
+            const devices = [];
+            for (let i = 1; i < deviceSelect.options.length; i++) {
+                const opt = deviceSelect.options[i];
+                if (opt.value) devices.push({ model: opt.value, name: opt.getAttribute('data-original-text') || opt.textContent });
+            }
+
+            if (devices.length === 0) {
+                alert('没有可签名的设备');
+                return;
+            }
+
+            const roleName = currentUser.role === 'operator' ? '担当' : currentUser.role === 'confirmer' ? '确认' : '承认';
+            if (!confirm(`即将以 ${roleName} 身份为 ${year}年${month}月 的全部 ${devices.length} 台设备一键签名，确认？`)) return;
+
+            const btn = document.getElementById('batchSignBtn');
+            btn.disabled = true;
+            btn.textContent = '签名中...';
+            let ok = 0, fail = 0;
+
+            for (const dev of devices) {
+                try {
+                    const res = await axios.post(`${API_BASE_URL}/api/Inspection/signatures/auto-sign`, {
+                        deviceModel: dev.model,
+                        year: year,
+                        month: month,
+                        role: currentUser.role,
+                        fullName: currentUser.fullName
+                    });
+                    if (res.data.success) ok++; else fail++;
+                } catch (e) {
+                    fail++;
+                }
+            }
+
+            btn.disabled = false;
+            btn.textContent = '批量签章';
+
+            // 刷新签名显示和统计
+            await updateSignSummary();
+            await loadMonthlySummary();
+            if (currentDevice) await loadSignaturesFromDB();
+
+            showStatus(`批量签章完成：${year}年${month}月 共 ${devices.length} 台设备，成功 ${ok}，失败 ${fail}`);
+        }
+
+        // ==================== 导出PDF ====================
+        async function exportPDF() {
+            const tableContainer = document.getElementById('tableContainer');
+            const table = tableContainer && tableContainer.querySelector('table');
+            if (!table) {
+                alert('请先查询设备数据后再导出PDF');
+                return;
+            }
+
+            const deviceSelect = document.getElementById('deviceSelect');
+            // 以下拉框选中项为准（含设备中文名），currentDevice 作兜底；去掉括号内容
+            const selText = deviceSelect.options[deviceSelect.selectedIndex]?.text || '';
+            const rawName = (selText && selText.includes(currentDevice)) ? selText : currentDevice;
+            const deviceName = rawName.replace(/\s*\(.*?\)\s*/g, '').trim();
+
+            // 从列结构估算表格宽度，避免浏览器缩放导致 scrollWidth 失真
+            const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+            const fixedColsW = 60 + 200 + 60 + 50;  // 编号+项目+内容+周期 min-width
+            const estimatedTableW = fixedColsW + daysInMonth * 55;
+            const capW = Math.min(Math.max(estimatedTableW + 40, 1200), 3500);
+
+            // CSS 电子印章（纯样式，无图片，无 canvas 污染）
+            function sealHTML(name, signed) {
+                const c = signed ? '#DC2626' : '#bbb';
+                const bg = signed ? 'rgba(220,38,38,0.04)' : 'rgba(0,0,0,0.02)';
+                const shadow = signed ? '0 0 0 2px rgba(220,38,38,0.12)' : '0 0 0 2px rgba(0,0,0,0.04)';
+                const dash = signed ? 'rgba(220,38,38,0.25)' : 'rgba(0,0,0,0.08)';
+                const star = signed ? 'rgba(220,38,38,0.08)' : 'rgba(0,0,0,0.05)';
+                const txt = signed ? name : '未签';
+                const fs = signed ? '14px' : '11px';
+                const chars = txt.split('');
+                let inner;
+                if (chars.length <= 2) {
+                    inner = `<span style="writing-mode:vertical-rl;letter-spacing:3px;font-size:${fs};font-weight:bold;color:${c};">${txt}</span>`;
+                } else if (chars.length === 3) {
+                    inner = `<span style="writing-mode:vertical-rl;letter-spacing:2px;font-size:${fs};font-weight:bold;color:${c};align-self:center;">${chars[0]}</span><span style="writing-mode:vertical-rl;letter-spacing:2px;font-size:${fs};font-weight:bold;color:${c};margin-left:2px;">${chars[1]}${chars[2]}</span>`;
+                } else {
+                    const mid = Math.ceil(chars.length / 2);
+                    inner = `<span style="writing-mode:vertical-rl;letter-spacing:2px;font-size:${fs};font-weight:bold;color:${c};">${chars.slice(0,mid).join('')}</span><span style="writing-mode:vertical-rl;letter-spacing:2px;font-size:${fs};font-weight:bold;color:${c};margin-left:2px;">${chars.slice(mid).join('')}</span>`;
+                }
+                return `
+                <div style="display:inline-flex;align-items:center;justify-content:center;
+                    width:60px;height:60px;border:3px solid ${c};border-radius:50%;
+                    position:relative;background:${bg};box-shadow:${shadow};vertical-align:top;isolation:isolate;">
+                    <span style="position:absolute;z-index:0;top:4px;left:4px;right:4px;bottom:4px;
+                        border:1px dashed ${dash};border-radius:50%;pointer-events:none;"></span>
+                    <span style="position:absolute;z-index:0;display:flex;align-items:center;justify-content:center;
+                        top:0;left:0;right:0;bottom:0;font-size:18px;color:${star};pointer-events:none;">★</span>
+                    <span style="position:relative;z-index:2;display:inline-flex;align-items:center;
+                        justify-content:center;line-height:1.2;overflow:visible;">${inner}</span>
+                </div>`;
+            }
+
+            // 直接克隆 table 节点，避免正则剥离 wrapper div 时因浏览器 HTML 序列化差异
+            // 导致结构错乱、底部备注行被挤出渲染区域（Bug 12 残留）
+            const tableClone = table.cloneNode(true);
+            const tableOnly = tableClone.outerHTML;
+            const html = `
+            <div style="isolation:isolate;font-family:'Microsoft YaHei',Arial,sans-serif;padding:10px 15px 20px 15px;background:#fff;width:${capW}px;color:#333;line-height:1.5;overflow:hidden;">
+                <!-- 标题行：附表一矩形框（左） + 设备治工具点检表标题（居中） -->
+                <div style="display:flex;align-items:center;margin:0 0 10px 0;">
+                    <div style="border:2.5px solid #333;padding:6px 14px;font-size:16px;font-weight:bold;flex-shrink:0;letter-spacing:2px;">附表一</div>
+                    <div style="flex:1;text-align:center;">
+                        <h2 style="margin:0;font-size:22px;">设备治工具点检表</h2>
+                    </div>
+                    <div style="width:82px;flex-shrink:0;"></div>
+                </div>
+                <!-- 设备信息 + 印章行 -->
+                <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px;">
+                    <div style="font-size:18px;color:#333;">设备：${deviceName} ｜ ${currentYear}年${currentMonth}月</div>
+                    <div style="text-align:right;">
+                        <span style="display:inline-block;text-align:center;margin:0 6px;font-size:10px;">
+                            <div style="font-size:14px;color:#666;font-weight:bold;margin-bottom:2px;">承 认</div>
+                            ${sealHTML(signatures.approver, !!signatures.approver)}
+                        </span>
+                        <span style="display:inline-block;text-align:center;margin:0 6px;font-size:10px;">
+                            <div style="font-size:14px;color:#666;font-weight:bold;margin-bottom:2px;">确 认</div>
+                            ${sealHTML(signatures.confirmer, !!signatures.confirmer)}
+                        </span>
+                        <span style="display:inline-block;text-align:center;margin:0 6px;font-size:10px;">
+                            <div style="font-size:14px;color:#666;font-weight:bold;margin-bottom:2px;">担 当</div>
+                            ${sealHTML(signatures.operatorName, !!signatures.operatorName)}
+                        </span>
+                    </div>
+                </div>
+                ${tableOnly}
+                <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:flex-end;font-size:16px;color:#555;flex-wrap:nowrap;">
+                    <span style="text-align:center;flex:1;white-space:nowrap;">备注：正常标记为 "○"，异常标记为 "×"，未点检标记为 "/"</span>
+                    <span style="text-align:right;font-weight:bold;flex-shrink:0;margin-left:20px;">SM-T1-03</span>
+                </div>
+            </div>`;
+
+            // 用独立 html2canvas + jsPDF 替代 html2pdf，完全控制渲染管线
+            // scale: 1 硬编码 — 不用 devicePixelRatio，canvas 尺寸恒定
+            // windowWidth: capW — 虚拟视口固定，不受浏览器 Ctrl+/- 缩放影响
+            const container = document.createElement('div');
+            container.style.cssText =
+                'position:absolute;left:-99999px;top:0;' +
+                'width:' + capW + 'px;';
+            container.innerHTML = html;
+            document.body.appendChild(container);
+
+            try {
+                const canvas = await html2canvas(container, {
+                    scale: 1,
+                    width: capW,
+                    windowWidth: capW,
+                    useCORS: true,
+                    logging: false
+                });
+
+                const JsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+                const pdf = new JsPDF({ unit: 'mm', format: 'a3', orientation: 'landscape' });
+                const pageW = pdf.internal.pageSize.getWidth();
+                const pageH = pdf.internal.pageSize.getHeight();
+                const ml = 6, mt = 8, mr = 6, mb = 8;
+                const imgW = pageW - ml - mr;
+                const imgH = (canvas.height * imgW) / canvas.width;
+                const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+                pdf.addImage(imgData, 'JPEG', ml, mt, imgW, imgH);
+                pdf.save(`点检表_${deviceName}_${currentYear}年${currentMonth}月.pdf`);
+            } catch (pdfError) {
+                console.error('PDF 生成失败:', pdfError);
+                throw pdfError;
+            } finally {
+                document.body.removeChild(container);
+            }
+        }
+
+        // ==================== 一键导出：当月所有设备合并为一个 PDF ====================
+        async function batchExportAll() {
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+
+            if (!year || !month) { alert('请先选择年份和月份'); return; }
+
+            // 收集所有设备
+            const deviceSelect = document.getElementById('deviceSelect');
+            const devices = [];
+            for (let i = 1; i < deviceSelect.options.length; i++) {
+                const opt = deviceSelect.options[i];
+                if (opt.value) devices.push(opt.value);
+            }
+            if (devices.length === 0) { alert('没有设备'); return; }
+
+            const btn = document.getElementById('batchExportBtn');
+            btn.disabled = true;
+            btn.textContent = '检查中...';
+
+            let savedDevice, savedTemplates, savedRecords, savedSignatures;
+            try {
+                // 1. 检查签名完整性
+                const checkRes = await axios.get(`${API_BASE_URL}/api/Inspection/signatures/check-all`, { params: { year, month } });
+                const checkData = checkRes.data;
+                const incomplete = checkData.devices.filter(d => !d.isComplete);
+
+                if (incomplete.length > 0) {
+                    btn.disabled = false;
+                    btn.textContent = '一键导出';
+                    const list = incomplete.map(d => {
+                        const missing = [];
+                        if (!d.approver) missing.push('承认');
+                        if (!d.confirmer) missing.push('确认');
+                        if (!d.operatorName) missing.push('担当');
+                        return `${d.deviceModel}(缺${missing.join('、')})`;
+                    }).join('\n');
+                    if (!confirm(`以下 ${incomplete.length} 台设备印章不完整：\n\n${list}\n\n是否继续导出？（未签章的印章将显示为空）`)) return;
+                } else {
+                    if (!confirm(`${year}年${month}月全部 ${devices.length} 台设备印章齐全，确认导出？`)) {
+                        btn.disabled = false;
+                        btn.textContent = '一键导出';
+                        return;
+                    }
+                }
+
+                // 2. 逐台导出 — 复用页面渲染和 exportPDF 逻辑
+                savedDevice = currentDevice;
+                savedTemplates = templatesData;
+                savedRecords = recordsData;
+                savedSignatures = { ...signatures };
+
+                const successList = [];
+                const failList = [];
+
+                for (let i = 0; i < devices.length; i++) {
+                    const dev = devices[i];
+                    btn.textContent = `导出中 ${i+1}/${devices.length}`;
+
+                    try {
+                        // 设置当前设备上下文
+                        currentDevice = dev;
+                        currentYear = year;
+                        currentMonth = month;
+                        const [templates, records, sigRes] = await Promise.all([
+                            loadTemplates(dev),
+                            loadRecords(dev, year, month),
+                            axios.get(`${API_BASE_URL}/api/Inspection/signatures/get`, { params: { deviceModel: dev, year, month } })
+                        ]);
+                        templatesData = templates;
+                        recordsData = records;
+                        signatures = {
+                            approver: sigRes.data.approver || '',
+                            confirmer: sigRes.data.confirmer || '',
+                            operatorName: sigRes.data.operatorName || ''
+                        };
+                        await renderReadOnlyTable();
+
+                        // 等 DOM 布局完成 + 上一次导出残留清理后再调用导出
+                        await new Promise(r => setTimeout(r, 500));
+                        await exportPDF();
+                        await new Promise(r => setTimeout(r, 500));
+
+                        successList.push(dev);
+                    } catch (devError) {
+                        console.error(`设备 ${dev} 导出失败:`, devError);
+                        failList.push({ dev, error: devError.message || devError });
+                        // 单个设备失败不中止，继续导出下一台
+                    }
+                }
+
+                // 汇总报告
+                const total = devices.length;
+                if (failList.length === 0) {
+                    showStatus(`一键导出完成：${year}年${month}月 共 ${total} 台设备`);
+                } else if (successList.length === 0) {
+                    alert(`导出全部失败（${total} 台）：\n${failList.map(f => `${f.dev}：${f.error}`).join('\n')}`);
+                } else {
+                    showStatus(`导出完成：成功 ${successList.length}/${total} 台，失败 ${failList.length} 台`);
+                    alert(`部分设备导出失败：\n${failList.map(f => `${f.dev}：${f.error}`).join('\n')}\n\n已成功导出的设备：${successList.join('、')}`);
+                }
+            } catch (e) {
+                console.error('批量导出前置检查失败:', e);
+                alert('导出失败：' + (e.response?.data?.error || e.message));
+            } finally {
+                // 恢复之前的设备上下文（CLAUDE.md: 全局状态必须在 finally 块恢复）
+                currentDevice = savedDevice;
+                templatesData = savedTemplates;
+                recordsData = savedRecords;
+                signatures = savedSignatures;
+                await renderReadOnlyTable();
+                updateSignatureDisplay();
+                btn.disabled = false;
+                btn.textContent = '一键导出';
+            }
+        }
+
+        // ==================== 导入计划 ====================
+        function importPlan() {
+            document.getElementById('planFileInput').click();
+        }
+
+        async function uploadPlan(event) {
+            const fileInput = document.getElementById('planFileInput');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            if (!file.name.toLowerCase().endsWith('.xlsx')) {
+                showError('请选择 .xlsx 格式的Excel文件');
+                fileInput.value = '';
+                return;
+            }
+
+            // 导入前确认：将重置所有动泰设备为「选择点检」，仅计划中的机种标记为「必须点检」
+            if (!confirm(
+                '导入计划将执行以下操作：\n\n' +
+                '① 所有动泰设备的日/周/月点检 → 设为「选择点检」\n' +
+                '② 计划中匹配到的机种 → 设为「必须点检」\n\n' +
+                '未在计划中的动泰设备将变为「选择点检」，确认继续？'
+            )) {
+                fileInput.value = '';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const btn = document.querySelector('.btn-import-plan');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '导入中...';
+            }
+
+            try {
+                const response = await axios.post(`${API_BASE_URL}/api/Inspection/import-plan`, formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    timeout: 60000
+                });
+
+                const data = response.data;
+                if (data.success) {
+                    const s = data.summary;
+                    showStatus(
+                        `导入计划完成 | ` +
+                        `机种编码: ${s.excelModelsFound} | ` +
+                        `动泰设备: ${s.dongtaiDevicesTotal} | ` +
+                        `匹配: ${s.devicesMatched} | ` +
+                        `模板更新: ${s.templatesUpdated}`
+                    );
+                    // 刷新摘要，反映 is_mandatory 变更
+                    loadMonthlySummary();
+                } else {
+                    showError(data.message || '导入失败');
+                }
+            } catch (error) {
+                console.error('导入计划失败:', error);
+                showError('导入计划失败：' + (error.response?.data?.message || error.message));
+            } finally {
+                fileInput.value = '';
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = '导入计划';
+                }
+            }
+        }
+
+        // ==================== 页面启动 ====================
+        window.onload = () => {
+            if (window.location.protocol === 'file:') {
+                var eb = document.getElementById('errorBar');
+                if (eb) {
+                    eb.innerHTML = '⚠️ 请通过 <b>http://' + API_SERVER_IP + ':8080/</b> 访问，不要直接打开文件<br><code>cd html &amp;&amp; python -m http.server 8080</code>';
+                    eb.style.display = 'flex';
+                }
+            }
+            initDateSelectors();
+            loadDevices();
+            setTimeout(() => {
+                showLoginModal();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

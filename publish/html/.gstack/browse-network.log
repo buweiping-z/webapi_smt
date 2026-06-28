@@ -1,0 +1,6 @@
+[2026-06-13T14:41:11.814Z] GET http://localhost:8080/ → 200 (2ms, 72903B)
+[2026-06-13T14:41:11.819Z] GET https://cdn.jsdelivr.net/npm/axios@1.6.2/dist/axios.min.js → pending (?ms, ?B)
+[2026-06-13T14:41:11.819Z] GET https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js → pending (?ms, ?B)
+[2026-06-13T14:41:14.605Z] GET http://localhost:5039/api/Inspection/devices → pending (?ms, ?B)
+[2026-06-13T14:41:14.924Z] GET http://localhost:5039/api/Inspection/frequency-summary?year=2026&month=6 → 200 (8ms, 454B)
+[2026-06-13T14:41:15.108Z] GET http://localhost:5039/api/Inspection/users/list → 200 (9ms, 199B)

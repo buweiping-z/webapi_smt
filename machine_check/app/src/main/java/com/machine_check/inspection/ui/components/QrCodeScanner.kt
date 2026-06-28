@@ -7,7 +7,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -17,13 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,18 +25,15 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.google.mlkit.vision.barcode.BarcodeScanner
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
-import java.util.concurrent.Executors
 
 /**
- * QR 码扫描组件
- * 使用 CameraX + ML Kit 进行实时条码识别
+ * 条码扫描组件 — 自动识别三种条码类型：
+ * 1. 纸质打印 QR 码（暗码亮底）
+ * 2. 纸质打印 Data Matrix 码（暗码亮底）
+ * 3. PCB 基板激光刻印 Data Matrix 码（亮码暗底，5mm×5mm）
  *
- * @param onBarcodeScanned 扫描到条码后的回调，返回条码内容
- * @param isActive 是否激活扫描（false 时暂停分析）
- * @param modifier Modifier
+ * 内部使用 ML Kit + ZXing 双通道并行处理，无需手动切换模式。
+ * 自动启用微距对焦以识别 5mm 尺寸的小码。
  */
 @Composable
 fun QrCodeScanner(
@@ -61,53 +51,38 @@ fun QrCodeScanner(
         )
     }
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
-    var lastScannedCode by remember { mutableStateOf<String?>(null) }
 
-    // 相机权限请求
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasCameraPermission = granted
-        if (!granted) {
-            showPermissionDeniedDialog = true
-        }
+        if (!granted) showPermissionDeniedDialog = true
     }
 
-    // 首次加载请求权限
     LaunchedEffect(Unit) {
-        if (!hasCameraPermission) {
-            permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        if (!hasCameraPermission) permissionLauncher.launch(Manifest.permission.CAMERA)
     }
 
-    // 权限被拒对话框
     if (showPermissionDeniedDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDeniedDialog = false },
             title = { Text("需要相机权限") },
             text = { Text("请在系统设置中授予相机权限以使用扫码功能") },
             confirmButton = {
-                TextButton(onClick = { showPermissionDeniedDialog = false }) {
-                    Text("确定")
-                }
+                TextButton(onClick = { showPermissionDeniedDialog = false }) { Text("确定") }
             }
         )
     }
 
     if (!hasCameraPermission) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
+        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("需要相机权限才能扫码，请授予权限后重试")
         }
         return
     }
 
-    var barcodeScannerRef by remember { mutableStateOf<BarcodeScanner?>(null) }
-    var analysisExecutorRef by remember { mutableStateOf<java.util.concurrent.ExecutorService?>(null) }
+    val analyzer = remember { BarcodeAnalyzer(onBarcodeScanned) }
 
-    // 相机预览 + 条码分析
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
@@ -118,84 +93,38 @@ fun QrCodeScanner(
                 cameraProviderFuture.addListener({
                     val cameraProvider = cameraProviderFuture.get()
 
-                    // 预览用例
                     val preview = Preview.Builder().build().also {
                         it.surfaceProvider = previewView.surfaceProvider
                     }
 
-                    // 图像分析用例（条码扫描）
                     val imageAnalysis = ImageAnalysis.Builder()
-                        .setTargetResolution(Size(640, 480))
+                        .setTargetResolution(Size(1920, 1080))
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build()
-
-                    val barcodeScanner = BarcodeScanning.getClient()
-                    val analysisExecutor = Executors.newSingleThreadExecutor()
-                    barcodeScannerRef = barcodeScanner
-                    analysisExecutorRef = analysisExecutor
-
-                    imageAnalysis.setAnalyzer(analysisExecutor) { imageProxy: ImageProxy ->
-                        if (!isActive) {
-                            imageProxy.close()
-                            return@setAnalyzer
-                        }
-
-                        val mediaImage = imageProxy.image
-                        if (mediaImage != null) {
-                            val image = InputImage.fromMediaImage(
-                                mediaImage, imageProxy.imageInfo.rotationDegrees
-                            )
-                            barcodeScanner.process(image)
-                                .addOnSuccessListener { barcodes ->
-                                    for (barcode in barcodes) {
-                                        val rawValue = barcode.rawValue
-                                        if (rawValue != null && rawValue != lastScannedCode) {
-                                            lastScannedCode = rawValue
-                                            onBarcodeScanned(rawValue)
-                                        }
-                                    }
-                                }
-                                .addOnCompleteListener {
-                                    imageProxy.close()
-                                }
-                        } else {
-                            imageProxy.close()
-                        }
-                    }
+                    imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(ctx), analyzer)
 
                     try {
                         cameraProvider.unbindAll()
                         cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
-                            preview,
-                            imageAnalysis
+                            lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA,
+                            preview, imageAnalysis
                         )
-                    } catch (_: Exception) {
-                        // 绑定失败，忽略
-                    }
+                    } catch (_: Exception) { }
                 }, ContextCompat.getMainExecutor(ctx))
 
                 previewView
             }
         )
 
-        // 扫描提示文字
-        Text(
-            text = "将二维码置于取景框内",
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(24.dp),
-            color = Color.White
-        )
-    }
-
-    // 组件销毁时清理
-    DisposableEffect(Unit) {
-        onDispose {
-            lastScannedCode = null
-            analysisExecutorRef?.shutdown()
-            barcodeScannerRef?.close()
+        DisposableEffect(analyzer) {
+            onDispose {
+                analyzer.close()
+            }
         }
+
+        ScannerOverlay(
+            modifier = Modifier.fillMaxSize(),
+            isActive = isActive
+        )
     }
 }

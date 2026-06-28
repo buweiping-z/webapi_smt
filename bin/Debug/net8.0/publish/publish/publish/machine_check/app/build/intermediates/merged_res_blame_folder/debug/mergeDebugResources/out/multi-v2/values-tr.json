@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.machine_check.inspection.app-mergeDebugResources-69:/values-tr/values-tr.xml",
+            "outputFile": "com.machine_check.inspection.app-mergeDebugResources-70:/values-tr/values-tr.xml",
             "map": [
                 {
                     "source": "C:\\Users\\33215\\.gradle\\caches\\9.4.1\\transforms\\6abfbccb9de41cd0f4a6caa55eb7286b\\transformed\\play-services-base-18.5.0\\res\\values-tr\\values.xml",
