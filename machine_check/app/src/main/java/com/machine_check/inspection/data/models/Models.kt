@@ -13,7 +13,8 @@ data class InspectionTemplate(
     val normalMax: Double?,
     val sortOrder: Int,
     val frequency: String = "日",   // 点检频率: 日/周/月
-    val requirePhoto: Boolean = false  // 该检查项是否需要拍照
+    val requirePhoto: Boolean = false,  // 该检查项是否需要拍照
+    val positionPhotos: List<PositionPhoto> = emptyList()  // 定位指示照片列表
 )
 
 /**
@@ -188,5 +189,15 @@ data class PhotoItemState(
     val isUploading: Boolean = false,                    // 是否有照片正在上传
     val uploadingIndex: Int = -1,                        // 正在上传第几张（-1 表示无）
     val uploadError: String? = null
+)
+
+/**
+ * 定位照片（模板级别的指示照片，非异常留证照片）
+ */
+data class PositionPhoto(
+    val id: Int,
+    val photoPath: String,
+    val thumbnailPath: String?,
+    val photoOrder: Int
 )
 

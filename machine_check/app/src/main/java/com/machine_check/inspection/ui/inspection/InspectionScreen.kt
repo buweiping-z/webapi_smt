@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +24,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -32,6 +35,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.machine_check.inspection.data.models.InspectionTemplate
 import com.machine_check.inspection.data.models.MAX_PHOTOS_PER_ITEM
+import com.machine_check.inspection.data.network.RetrofitClient
 import kotlinx.coroutines.delay
 import java.io.File
 
@@ -326,6 +330,10 @@ private fun InspectionItemCard(
 ) {
     val template = itemState.template; val isValid = itemState.isValid
 
+    val photoBaseUrl = RetrofitClient.baseUrl.trimEnd('/')
+    var showFullScreenDialog by remember { mutableStateOf(false) }
+    var fullScreenPhotoUrl by remember { mutableStateOf("") }
+
     Card(
         modifier = Modifier.fillMaxWidth().border(
             width = if (!isValid) 2.dp else 0.dp,
@@ -359,6 +367,42 @@ private fun InspectionItemCard(
                 modifier = Modifier.fillMaxWidth(), singleLine = true,
                 isError = itemState.remarkRequired && itemState.remark.isBlank()
             )
+
+            // ===== 定位照片区域 =====
+            val positionPhotos = template.positionPhotos
+                .filter { !it.thumbnailPath.isNullOrBlank() }
+                .sortedBy { it.photoOrder }
+            if (positionPhotos.isNotEmpty()) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Text("📍 定位指示", style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    positionPhotos.forEach { photo ->
+                        Box(
+                            modifier = Modifier
+                                .size(80.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable {
+                                    // 全屏查看原图
+                                    showFullScreenDialog = true
+                                    fullScreenPhotoUrl = "${photoBaseUrl}/${photo.photoPath.trimStart('/')}"
+                                }
+                        ) {
+                            AsyncImage(
+                                model = "${photoBaseUrl}/${photo.thumbnailPath!!.trimStart('/')}",
+                                contentDescription = "定位照片",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                }
+            }
 
             // ===== 照片区域 =====
             if (template.requirePhoto) {
@@ -437,6 +481,29 @@ private fun InspectionItemCard(
                         )
                     }
                 }
+            }
+        }
+    }
+
+    // 全屏查看定位照片
+    if (showFullScreenDialog) {
+        Dialog(
+            onDismissRequest = { showFullScreenDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .clickable { showFullScreenDialog = false },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = fullScreenPhotoUrl,
+                    contentDescription = "定位照片全屏",
+                    modifier = Modifier.fillMaxWidth(),
+                    contentScale = ContentScale.Fit
+                )
             }
         }
     }
