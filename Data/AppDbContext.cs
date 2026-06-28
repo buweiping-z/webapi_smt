@@ -18,6 +18,7 @@
         public DbSet<QualifiedInspector> QualifiedInspectors { get; set; }
         public DbSet<Device> Devices { get; set; }
         public DbSet<InspectionPhoto> InspectionPhotos { get; set; }
+        public DbSet<InspectionPositionPhoto> InspectionPositionPhotos { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -56,6 +57,10 @@
                 entity.Property(t => t.IsMandatory)
                     .HasColumnName("is_mandatory")
                     .HasDefaultValue(true);
+                entity.HasMany(t => t.PositionPhotos)
+                    .WithOne()
+                    .HasForeignKey(p => p.TemplateId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<InspectionResult>(entity =>
@@ -126,6 +131,19 @@
             {
                 entity.HasIndex(s => new { s.DeviceModel, s.Year, s.Month })
                     .HasDatabaseName("idx_signatures_device_period");
+            });
+
+            modelBuilder.Entity<InspectionPositionPhoto>(entity =>
+            {
+                entity.ToTable("inspection_position_photos");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id");
+                entity.Property(e => e.TemplateId).HasColumnName("template_id").IsRequired();
+                entity.Property(e => e.PhotoPath).HasColumnName("photo_path").HasMaxLength(500).IsRequired();
+                entity.Property(e => e.ThumbnailPath).HasColumnName("thumbnail_path").HasMaxLength(500);
+                entity.Property(e => e.PhotoOrder).HasColumnName("photo_order").HasDefaultValue(0);
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.HasIndex(e => e.TemplateId).HasDatabaseName("idx_position_photos_template");
             });
         }
     }

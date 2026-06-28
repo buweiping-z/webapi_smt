@@ -36,5 +36,8 @@ namespace webapi.Models
 
         [Column("require_photo")]
         public bool RequirePhoto { get; set; } = false;
+
+        [Column("position_photos")]
+        public List<InspectionPositionPhoto> PositionPhotos { get; set; } = new();
     }
 }
