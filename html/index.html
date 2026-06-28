@@ -3106,9 +3106,17 @@
                 showStatus('定位照片上传成功');
                 // 重新加载模板数据以获取最新 positionPhotos
                 templatesData = await loadTemplates(currentDevice);
-                // 更新下拉框选项
+                ppTemplates = templatesData;
+                // 刷新下拉框选项
+                const sel = document.getElementById('ppTemplateSelect');
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">-- 请选择点检项 --</option>';
+                ppTemplates.forEach(t => {
+                    sel.innerHTML += `<option value="${t.id}">${t.itemName} (${(t.positionPhotos || []).length}/3)</option>`;
+                });
+                sel.value = currentVal;
+                // onPositionPhotoTemplateChange 内部已调用 renderPositionPhotos
                 onPositionPhotoTemplateChange();
-                renderPositionPhotos();
             } catch (error) {
                 showError('上传失败：' + (error.response?.data?.message || error.message));
             }
@@ -3123,8 +3131,17 @@
                 showStatus('定位照片已删除');
                 // 刷新模板数据
                 templatesData = await loadTemplates(currentDevice);
+                ppTemplates = templatesData;
+                // 刷新下拉框选项
+                const sel = document.getElementById('ppTemplateSelect');
+                const currentVal = sel.value;
+                sel.innerHTML = '<option value="">-- 请选择点检项 --</option>';
+                ppTemplates.forEach(t => {
+                    sel.innerHTML += `<option value="${t.id}">${t.itemName} (${(t.positionPhotos || []).length}/3)</option>`;
+                });
+                sel.value = currentVal;
+                // onPositionPhotoTemplateChange 内部已调用 renderPositionPhotos
                 onPositionPhotoTemplateChange();
-                renderPositionPhotos();
             } catch (error) {
                 showError('删除失败：' + (error.response?.data?.message || error.message));
             }
