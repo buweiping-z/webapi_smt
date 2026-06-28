@@ -1694,6 +1694,36 @@ namespace webapi.Controllers
             }
         }
 
+        /// <summary>
+        /// 删除单张定位照片（先删 DB 行，再删磁盘文件）
+        /// </summary>
+        [HttpDelete("position-photos/{photoId}")]
+        public async Task<IActionResult> DeletePositionPhoto(int photoId)
+        {
+            var photo = await _context.InspectionPositionPhotos
+                .AsTracking()
+                .FirstOrDefaultAsync(p => p.Id == photoId);
+
+            if (photo == null)
+                return NotFound(new { success = false, message = "照片不存在" });
+
+            // 先删 DB 行
+            _context.InspectionPositionPhotos.Remove(photo);
+            await _context.SaveChangesAsync();
+
+            // 再删磁盘文件（best effort，失败不影响 DB 结果）
+            var photoFullPath = Path.Combine(_env.WebRootPath, photo.PhotoPath.TrimStart('/'));
+            var thumbFullPath = photo.ThumbnailPath != null
+                ? Path.Combine(_env.WebRootPath, photo.ThumbnailPath.TrimStart('/'))
+                : null;
+
+            if (System.IO.File.Exists(photoFullPath))
+                System.IO.File.Delete(photoFullPath);
+            if (thumbFullPath != null && System.IO.File.Exists(thumbFullPath))
+                System.IO.File.Delete(thumbFullPath);
+
+            return Ok(new { success = true, message = "定位照片已删除" });
+        }
 
         // ===== 辅助方法 =====
 
