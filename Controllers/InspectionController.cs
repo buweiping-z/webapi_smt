@@ -1628,7 +1628,7 @@ namespace webapi.Controllers
                 PhotoPath = "",
                 ThumbnailPath = "",
                 PhotoOrder = photoOrder,
-                CreatedAt = DateTime.Now
+                CreatedAt = DateTime.UtcNow
             };
 
             using var transaction = await _context.Database.BeginTransactionAsync();

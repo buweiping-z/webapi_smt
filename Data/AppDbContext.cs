@@ -142,7 +142,7 @@
                 entity.Property(e => e.PhotoPath).HasColumnName("photo_path").HasMaxLength(500).IsRequired();
                 entity.Property(e => e.ThumbnailPath).HasColumnName("thumbnail_path").HasMaxLength(500);
                 entity.Property(e => e.PhotoOrder).HasColumnName("photo_order").HasDefaultValue(0);
-                entity.Property(e => e.CreatedAt).HasColumnName("created_at");
+                entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("CURRENT_TIMESTAMP");
                 entity.HasIndex(e => e.TemplateId).HasDatabaseName("idx_position_photos_template");
             });
         }

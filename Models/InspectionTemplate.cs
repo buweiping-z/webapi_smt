@@ -37,7 +37,7 @@ namespace webapi.Models
         [Column("require_photo")]
         public bool RequirePhoto { get; set; } = false;
 
-        [Column("position_photos")]
+        // 定位照片集合（导航属性，映射为外键关系，无需 Column 注解）
         public List<InspectionPositionPhoto> PositionPhotos { get; set; } = new();
     }
 }
