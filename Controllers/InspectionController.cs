@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
+using SkiaSharp;
 using webapi.Data;
 using webapi.Models;
 
@@ -1555,6 +1556,144 @@ namespace webapi.Controllers
             }
         }
 
+        /// <summary>
+        /// 为指定模板项上传定位照片（每项最多3张）
+        /// </summary>
+        [HttpPost("templates/{templateId}/position-photos")]
+        [RequestSizeLimit(5_242_880)] // 5MB
+        public async Task<IActionResult> UploadPositionPhoto(
+            int templateId,
+            IFormFile file,
+            [FromForm] int photoOrder = 0)
+        {
+            // 1. 验证模板存在
+            var template = await _context.InspectionTemplates
+                .Include(t => t.PositionPhotos)
+                .AsTracking()
+                .FirstOrDefaultAsync(t => t.Id == templateId);
+
+            if (template == null)
+                return NotFound(new { success = false, message = $"模板项 {templateId} 不存在" });
+
+            // 2. 检查数量上限
+            if (template.PositionPhotos.Count >= 3)
+                return BadRequest(new { success = false, message = "每个检查项最多上传3张定位照片" });
+
+            if (file == null || file.Length == 0)
+                return BadRequest(new { success = false, message = "请选择照片文件" });
+
+            // 3. 文件大小校验
+            if (file.Length > 5_242_880)
+                return BadRequest(new { success = false, message = "照片文件不能超过5MB" });
+
+            // 4. MIME 类型校验
+            var allowedTypes = new[] { "image/jpeg", "image/png" };
+            if (!allowedTypes.Contains(file.ContentType.ToLower()))
+                return BadRequest(new { success = false, message = "仅支持 JPEG / PNG 格式" });
+
+            // 5. 魔数校验
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var magic = new byte[4];
+            ms.Read(magic, 0, 4);
+            ms.Position = 0;
+
+            bool validMagic = (magic[0] == 0xFF && magic[1] == 0xD8 && magic[2] == 0xFF)  // JPEG
+                           || (magic[0] == 0x89 && magic[1] == 0x50 && magic[2] == 0x4E && magic[3] == 0x47); // PNG
+            if (!validMagic)
+                return BadRequest(new { success = false, message = "文件格式校验失败，请上传真实的 JPEG/PNG 图片" });
+
+            // 6. 图片解码校验
+            SKBitmap? bitmap;
+            try
+            {
+                bitmap = SKBitmap.Decode(ms);
+            }
+            catch
+            {
+                return BadRequest(new { success = false, message = "无法解码图片，文件可能已损坏" });
+            }
+            if (bitmap == null)
+                return BadRequest(new { success = false, message = "无法解码图片" });
+
+            // 7. 保存文件
+            var photosRoot = Path.Combine(_env.WebRootPath, "photos", "position", templateId.ToString());
+            Directory.CreateDirectory(photosRoot);
+
+            var photo = new InspectionPositionPhoto
+            {
+                TemplateId = templateId,
+                PhotoPath = "",
+                ThumbnailPath = "",
+                PhotoOrder = photoOrder,
+                CreatedAt = DateTime.Now
+            };
+
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                _context.InspectionPositionPhotos.Add(photo);
+                await _context.SaveChangesAsync();
+
+                var fileName = $"{photo.Id}.jpg";
+                var thumbName = $"{photo.Id}_thumb.jpg";
+
+                // 原图：最大宽度 1920px
+                var maxWidth = 1920;
+                var resized = bitmap.Width > maxWidth
+                    ? ResizeToMaxWidth(bitmap, maxWidth)
+                    : bitmap.Copy();
+
+                var photoPath = Path.Combine(photosRoot, fileName);
+                using (var fs = new FileStream(photoPath, FileMode.Create))
+                {
+                    using var data = resized.Encode(SKEncodedImageFormat.Jpeg, 85);
+                    data.SaveTo(fs);
+                }
+
+                // 缩略图：300×300 居中裁切
+                using var thumbBitmap = CropCenter(resized, 300, 300);
+                var thumbPath = Path.Combine(photosRoot, thumbName);
+                using (var fs = new FileStream(thumbPath, FileMode.Create))
+                {
+                    using var data = thumbBitmap.Encode(SKEncodedImageFormat.Jpeg, 85);
+                    data.SaveTo(fs);
+                }
+
+                resized.Dispose();
+                bitmap.Dispose();
+
+                // 更新路径
+                var relativePhotoPath = $"/photos/position/{templateId}/{fileName}";
+                var relativeThumbPath = $"/photos/position/{templateId}/{thumbName}";
+                photo.PhotoPath = relativePhotoPath;
+                photo.ThumbnailPath = relativeThumbPath;
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                return Ok(new
+                {
+                    id = photo.Id,
+                    photoPath = photo.PhotoPath,
+                    thumbnailPath = photo.ThumbnailPath,
+                    photoOrder = photo.PhotoOrder
+                });
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                // 清理可能已写的文件
+                var pf = Path.Combine(photosRoot, $"{photo.Id}.jpg");
+                var tf = Path.Combine(photosRoot, $"{photo.Id}_thumb.jpg");
+                if (System.IO.File.Exists(pf)) System.IO.File.Delete(pf);
+                if (System.IO.File.Exists(tf)) System.IO.File.Delete(tf);
+                throw;
+            }
+        }
+
 
         // ===== 辅助方法 =====
 
@@ -1571,6 +1710,46 @@ namespace webapi.Controllers
                 "月" => date.ToString("yyyy-MM"),
                 _ => date.ToString("yyyy-MM-dd")
             };
+        }
+
+        /// <summary>
+        /// 缩放图片至最大宽度，保持宽高比（复制自 PhotosController）
+        /// </summary>
+        private static SKBitmap ResizeToMaxWidth(SKBitmap original, int maxWidth)
+        {
+            if (original.Width <= maxWidth)
+                return original.Copy();
+
+            float ratio = (float)maxWidth / original.Width;
+            int newHeight = (int)(original.Height * ratio);
+            var resized = original.Resize(new SKImageInfo(maxWidth, newHeight), new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear));
+            return resized ?? original.Copy();
+        }
+
+        /// <summary>
+        /// 居中裁切至目标尺寸（复制自 PhotosController）
+        /// </summary>
+        private static SKBitmap CropCenter(SKBitmap source, int width, int height)
+        {
+            int cropX = Math.Max(0, (source.Width - width) / 2);
+            int cropY = Math.Max(0, (source.Height - height) / 2);
+            int cropW = Math.Min(width, source.Width);
+            int cropH = Math.Min(height, source.Height);
+
+            var rect = new SKRectI(cropX, cropY, cropX + cropW, cropY + cropH);
+            var cropped = new SKBitmap(cropW, cropH);
+            source.ExtractSubset(cropped, rect);
+
+            // 如果裁切后小于目标尺寸，创建目标尺寸的画布居中放置
+            if (cropW == width && cropH == height)
+                return cropped;
+
+            var canvas = new SKBitmap(width, height);
+            using var g = new SKCanvas(canvas);
+            g.Clear(SKColors.Black);
+            g.DrawBitmap(cropped, (width - cropW) / 2, (height - cropH) / 2);
+            cropped.Dispose();
+            return canvas;
         }
 
 
