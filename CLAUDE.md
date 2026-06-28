@@ -80,6 +80,8 @@ Connection string is in `appsettings.json` (no secrets manager used). All tables
 - **CORS**: Open (`AllowAll` policy — any origin, method, header)
 - **Swagger**: Enabled only in Development; available at `/swagger`
 - No authentication middleware — auth is done manually via the `users/login` endpoint
+- **Navigation property + JSON serialization**: 向实体添加导航属性（如 `InspectionTemplate.PositionPhotos`）时，子实体不要加反向导航属性，否则 `System.Text.Json` 会循环引用。通过 `.Include()` 预加载，API 直接返回实体即可，JSON 会自然嵌套序列化。
+- **`[Column]` 仅对标量属性有效**：导航属性不要加 `[Column]` 注解，EF Core 会忽略它，徒增误导。
 
 ### Frontend
 
@@ -110,6 +112,7 @@ The frontend expects the API at the same host. In production the API and fronten
 - **构建**：`cd machine_check && ./gradlew :app:assembleDebug`（Windows 用 `gradlew.bat`）
 - **自身 CLAUDE.md**：`machine_check/CLAUDE.md` 有完整的依赖、架构、包名等细节
 - **关键注意**：APK 是编译产物，修改手机端逻辑需要改 Kotlin 源码后重新构建
+- **Gradle 缓存陷阱**：`assembleDebug` 显示 `UP-TO-DATE` 但 APK 未更新时，是 Gradle 增量编译缓存命中。必须先 `./gradlew clean` 再 `./gradlew :app:assembleDebug` 强制全量重编，确保 Kotlin 源码变更进入 APK
 
 ## Important Notes
 
