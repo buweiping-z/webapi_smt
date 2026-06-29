@@ -32,7 +32,12 @@
 
 ## 数据来源
 
-复用现有 `GET api/inspection/monthly-summary?year=&month=` API，无后端改动。
+复用现有 `GET api/inspection/monthly-summary?year=&month=` API。
+
+**2026-07-01 修复：** 异常判断逻辑修正为按天分组取最新记录：
+- `BuildFrequencyStats`（frequency-summary）：原来遍历所有记录判断异常，改为按 `InspectionTime.Date` 分组，每天取最新一条记录判断
+- `GetMonthlySummary`（monthly-summary）：原来按 DeviceModel 取整月最新一条，改为按 (DeviceModel, Date) 分组，每天取最新一条，任一天有异常则设备计入当月异常
+- 两个 API 均有后端改动
 
 返回数据中使用的字段：
 - `abnormalDevices` — 异常设备数量
