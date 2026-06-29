@@ -1264,6 +1264,94 @@
         }
 
         /* ============================================================
+           Abnormal Monthly Panel
+           ============================================================ */
+        #abnormalMonthlyPanel {
+            margin-top: 6px;
+            padding: 8px 10px;
+            background: var(--danger-light);
+            border: 1px solid var(--danger-border);
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+        }
+
+        #abnormalMonthlyPanel.all-clear {
+            background: var(--success-light);
+            border-color: var(--success-border);
+        }
+
+        #abnormalMonthlyPanel .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 0;
+            font-family: var(--font-heading);
+            font-size: 12px;
+            font-weight: 600;
+            color: #991B1B;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        #abnormalMonthlyPanel.all-clear .panel-header {
+            color: #065F46;
+        }
+
+        #abnormalMonthlyPanel .panel-header::after {
+            content: '';
+            margin-left: auto;
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid currentColor;
+            transition: transform var(--transition-fast);
+        }
+
+        #abnormalMonthlyPanel.collapsed .panel-header::after {
+            transform: rotate(-90deg);
+        }
+
+        #abnormalMonthlyPanel .panel-header .abnormal-count {
+            font-weight: 700;
+            color: #DC2626;
+        }
+
+        #abnormalMonthlyPanel.all-clear .panel-header .abnormal-count {
+            color: #065F46;
+        }
+
+        .abnormal-device-list {
+            margin-top: 6px;
+            max-height: 260px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .abnormal-device-row {
+            padding: 4px 8px;
+            border-radius: var(--radius-xs);
+            cursor: pointer;
+            color: #7F1D1D;
+            transition: background var(--transition-fast);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .abnormal-device-row:hover {
+            background: rgba(239, 68, 68, 0.12);
+            color: #991B1B;
+        }
+
+        .abnormal-device-row .abnormal-icon {
+            margin-right: 4px;
+            font-size: 11px;
+        }
+
+        /* ============================================================
            Out-of-range numeric result
            ============================================================ */
         .result-outofrange {
