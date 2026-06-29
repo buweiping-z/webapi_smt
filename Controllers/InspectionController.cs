@@ -1248,10 +1248,17 @@ namespace webapi.Controllers
                     continue;
                 }
 
-                // 收集本周期所有记录的 result item_name + 异常标记
+                // 异常检查：按天分组，每天取最新一条记录，任一天有异常则该设备为当月异常
                 var deviceResultItemNames = new HashSet<string>();
                 var anyAbnormal = false;
-                foreach (var record in deviceRecords)
+
+                // 按 (日期) 分组，每组取当天最新一条记录
+                var latestPerDay = deviceRecords
+                    .GroupBy(r => r.InspectionTime.Date)
+                    .Select(g => g.OrderByDescending(r => r.InspectionTime).First())
+                    .ToList();
+
+                foreach (var record in latestPerDay)
                 {
                     if (resultsByRecordId.TryGetValue(record.Id, out var results))
                     {
@@ -1324,22 +1331,62 @@ namespace webapi.Controllers
 
                 var inspectedSet = new HashSet<string>(inspectedDevices);
 
-                // 当月有异常（×）的设备 — 仅统计最后一次点检仍有异常的
-                // 先取每台设备当月最新的记录 ID
-                var latestRecordIds = await _context.InspectionRecords
+                // 当月有异常（×）的设备 — 按天分组，每天取最新记录，任一天有异常则计入
+                // 加载当月所有记录及其结果明细
+                var monthRecords = await _context.InspectionRecords
                     .Where(r => r.InspectionTime >= startDate && r.InspectionTime <= endDate)
-                    .GroupBy(r => r.DeviceModel)
-                    .Select(g => g.OrderByDescending(r => r.InspectionTime).First().Id)
                     .ToListAsync();
 
-                var abnormalDevices = await (
-                    from r in _context.InspectionRecords
-                    join res in _context.InspectionResults on r.Id equals res.RecordId
-                    where latestRecordIds.Contains(r.Id) && res.ResultValue == "异常"
-                    select r.DeviceModel
-                ).Distinct().ToListAsync();
+                var monthRecordIds = monthRecords.Select(r => r.Id).ToList();
+                var monthResults = new List<InspectionResult>();
+                if (monthRecordIds.Count > 0)
+                {
+                    const int batchSize = 500;
+                    for (int i = 0; i < monthRecordIds.Count; i += batchSize)
+                    {
+                        var batch = monthRecordIds.Skip(i).Take(batchSize).ToList();
+                        var batchResults = await _context.InspectionResults
+                            .Where(res => batch.Contains(res.RecordId))
+                            .ToListAsync();
+                        monthResults.AddRange(batchResults);
+                    }
+                }
 
-                var abnormalSet = new HashSet<string>(abnormalDevices);
+                var resultsByRecord = monthResults
+                    .GroupBy(res => res.RecordId)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                // 按 (DeviceModel, 日期) 分组，每天取最新记录
+                var latestPerDeviceDay = monthRecords
+                    .GroupBy(r => new { r.DeviceModel, Date = r.InspectionTime.Date })
+                    .Select(g => g.OrderByDescending(r => r.InspectionTime).First())
+                    .GroupBy(r => r.DeviceModel)
+                    .ToDictionary(g => g.Key, g => g.ToList());
+
+                var abnormalDeviceModels = new List<string>();
+                foreach (var deviceGroup in latestPerDeviceDay)
+                {
+                    var deviceModel = deviceGroup.Key;
+                    var dailyLatestRecords = deviceGroup.Value;
+
+                    bool hasAbnormal = false;
+                    foreach (var record in dailyLatestRecords)
+                    {
+                        if (resultsByRecord.TryGetValue(record.Id, out var results))
+                        {
+                            if (results.Any(r => !r.IsNormal))
+                            {
+                                hasAbnormal = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (hasAbnormal)
+                        abnormalDeviceModels.Add(deviceModel);
+                }
+
+                var abnormalSet = new HashSet<string>(abnormalDeviceModels);
 
                 var devices = allDevices.Select(d => new
                 {
@@ -1355,8 +1402,8 @@ namespace webapi.Controllers
                     totalDevices = allDevices.Count,
                     inspectedDevices = inspectedSet.Count,
                     uninspectedDevices = allDevices.Count - inspectedSet.Count,
-                    abnormalDevices = abnormalDevices.Count,
-                    abnormalDeviceModels = abnormalDevices,
+                    abnormalDevices = abnormalDeviceModels.Count,
+                    abnormalDeviceModels,
                     devices
                 });
             }
