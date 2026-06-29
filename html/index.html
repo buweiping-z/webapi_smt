@@ -2252,6 +2252,7 @@
                 if (count === 0) {
                     panel.classList.add('all-clear');
                     panel.classList.add('collapsed');
+                    content.innerHTML = '';
                     header.innerHTML = '✅ 本月无异常';
                 } else {
                     panel.classList.remove('all-clear');
@@ -2269,7 +2270,7 @@
                 }
 
                 // 标记下拉框中的异常设备
-                markAbnormalDevices(models);
+                if (models.length > 0) markAbnormalDevices(models);
 
             } catch (error) {
                 console.error('加载异常设备清单失败:', error);
@@ -2321,6 +2322,10 @@
                 if (abnormalSet.has(deviceModel)) {
                     option.textContent = option.getAttribute('data-original-text') + ' ⚠️异常';
                     option.style.color = '#c62828';
+                } else if (option.textContent.includes('⚠️异常')) {
+                    // 清理旧的异常标记（设备在本月不再异常）
+                    option.textContent = option.getAttribute('data-original-text');
+                    option.style.color = '';
                 }
                 // 注意：不在 abnormalSet 中的设备不在此处恢复，交给 markUninspectedDevices 处理
             }
