@@ -2215,6 +2215,59 @@
             }
         }
 
+        // 加载当月异常点检设备清单
+        async function loadMonthlyAbnormalPanel() {
+            const yearSelect = document.getElementById('yearSelect');
+            const monthSelect = document.getElementById('monthSelect');
+            if (!yearSelect || !monthSelect) return;
+
+            const year = parseInt(yearSelect.value);
+            const month = parseInt(monthSelect.value);
+            if (!year || !month) return;
+
+            const panel = document.getElementById('abnormalMonthlyPanel');
+            const header = document.getElementById('abnormalPanelHeader');
+            const content = document.getElementById('abnormalPanelContent');
+            if (!panel || !header || !content) return;
+
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/Inspection/monthly-summary`, {
+                    params: { year, month }
+                });
+                const data = response.data;
+                const count = data.abnormalDevices || 0;
+                const models = data.abnormalDeviceModels || [];
+
+                panel.style.display = 'block';
+
+                if (count === 0) {
+                    panel.classList.add('all-clear');
+                    panel.classList.add('collapsed');
+                    header.innerHTML = '✅ 本月无异常';
+                } else {
+                    panel.classList.remove('all-clear');
+                    panel.classList.remove('collapsed');
+                    header.innerHTML = `⚠️ 异常设备 <span class="abnormal-count">(${count}台)</span>`;
+
+                    let html = '<div class="abnormal-device-list">';
+                    models.forEach(model => {
+                        html += `<div class="abnormal-device-row" data-device-model="${model}" title="${model}">`;
+                        html += `<span class="abnormal-icon">⚠️</span>${model}`;
+                        html += `</div>`;
+                    });
+                    html += '</div>';
+                    content.innerHTML = html;
+                }
+
+                // 标记下拉框中的异常设备
+                markAbnormalDevices(models);
+
+            } catch (error) {
+                console.error('加载异常设备清单失败:', error);
+                if (panel) panel.style.display = 'none';
+            }
+        }
+
         function markUninspectedDevices(uninspectedSet) {
             const select = document.getElementById('deviceSelect');
             if (!select || select.options.length <= 1) return;
