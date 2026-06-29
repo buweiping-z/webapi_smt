@@ -60,6 +60,26 @@ loadData() / 切换年/月
 | 设备名过长 | `text-overflow: ellipsis`，hover title 显示全称 |
 | 异常设备 > 10 个 | 列表设 `max-height` + `overflow-y: auto` |
 
+## 实现注意事项
+
+### 1. deviceModel 与 option.value 的精确匹配
+
+面板行点击执行 `deviceSelect.value = deviceModel` 时，API 返回的 `abnormalDeviceModels` 值必须与 `<option value>` 严格一致。注意空格和大小写可能导致匹配失败，下拉框无法成功选中。
+
+**处理**：使用与现有 `loadDevices()` 填充 `<option>` 时相同的值来源，确保 `monthly-summary` API 返回的 `deviceModel` 与 `deviceSelect.options[i].value` 完全一致。
+
+### 2. 避免 loadData() 循环触发
+
+调用链：面板点击 → `deviceSelect.value = deviceModel` → `loadData()` → `loadMonthlyAbnormalPanel()` 刷新面板。
+
+**处理**：`loadMonthlyAbnormalPanel()` 只做面板 DOM 渲染，不修改 `deviceSelect.value`。渲染过程不触发 `change` 事件，避免死循环或选中状态闪烁。
+
+### 3. Option 标记防重复
+
+`markAbnormalDevices()` 每次 `loadData()` 都会执行。必须避免重复追加后缀（如 `设备A ⚠️异常 ⚠️异常`）。
+
+**处理**：复用现有 `markUninspectedDevices()` 的 `data-original-text` 模式 — 先读取 `data-original-text` 属性恢复原始文本，再追加标记。异常标记使用 `⚠️异常` 后缀和红色文字（`style.color = '#c62828'`），与未检标记 `⚠️ 未检` 区分。同一设备可能同时有未检和异常标记（例如上月未检但在本月异常），按优先级排列：异常标记 > 未检标记。
+
 ## 实现范围
 
 纯前端改动，仅涉及 `html/index.html`：
