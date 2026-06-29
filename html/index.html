@@ -2285,9 +2285,35 @@
                     option.textContent = option.getAttribute('data-original-text') + ' ⚠️ 未检';
                     option.style.color = '#c62828';
                 } else {
-                    option.textContent = option.getAttribute('data-original-text');
-                    option.style.color = '';
+                    // 不覆盖异常标记：如果当前 textContent 已包含 ⚠️异常 则保留
+                    if (!option.textContent.includes('⚠️异常')) {
+                        option.textContent = option.getAttribute('data-original-text');
+                        option.style.color = '';
+                    }
                 }
+            }
+        }
+
+        function markAbnormalDevices(abnormalModels) {
+            const select = document.getElementById('deviceSelect');
+            if (!select || select.options.length <= 1) return;
+
+            const abnormalSet = new Set(abnormalModels);
+
+            for (let i = 1; i < select.options.length; i++) {
+                const option = select.options[i];
+                const deviceModel = option.value;
+                // 先恢复原始文本（与 markUninspectedDevices 共享 data-original-text）
+                const originalText = option.getAttribute('data-original-text') || option.textContent;
+                if (!option.getAttribute('data-original-text')) {
+                    option.setAttribute('data-original-text', originalText);
+                }
+
+                if (abnormalSet.has(deviceModel)) {
+                    option.textContent = option.getAttribute('data-original-text') + ' ⚠️异常';
+                    option.style.color = '#c62828';
+                }
+                // 注意：不在 abnormalSet 中的设备不在此处恢复，交给 markUninspectedDevices 处理
             }
         }
 
