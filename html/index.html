@@ -1312,6 +1312,14 @@
             transform: rotate(-90deg);
         }
 
+        #abnormalMonthlyPanel.collapsed .abnormal-device-list {
+            display: none;
+        }
+
+        #abnormalMonthlyPanel.collapsed .panel-header {
+            margin-bottom: 0;
+        }
+
         #abnormalMonthlyPanel .panel-header .abnormal-count {
             font-weight: 700;
             color: #DC2626;
@@ -2141,6 +2149,7 @@
                 fillFrequencyRow('monthly', data.monthly);
 
                 loadUninspectedMonthly();
+                loadMonthlyAbnormalPanel();
 
             } catch (error) {
                 console.error('加载频率摘要失败:', error);
@@ -3320,6 +3329,36 @@
                 showError('删除失败：' + (error.response?.data?.message || error.message));
             }
         }
+
+        // ==================== 异常设备面板事件委托 ====================
+        document.addEventListener('click', function(e) {
+            // 点击异常面板头部 → 折叠/展开
+            const headerEl = e.target.closest('#abnormalPanelHeader');
+            if (headerEl) {
+                const panel = document.getElementById('abnormalMonthlyPanel');
+                if (panel && !panel.classList.contains('all-clear')) {
+                    panel.classList.toggle('collapsed');
+                }
+                return;
+            }
+
+            // 点击异常设备行 → 跳转到该设备
+            const row = e.target.closest('.abnormal-device-row');
+            if (!row) return;
+
+            const deviceModel = row.getAttribute('data-device-model');
+            if (!deviceModel) return;
+
+            const deviceSelect = document.getElementById('deviceSelect');
+            for (let i = 0; i < deviceSelect.options.length; i++) {
+                if (deviceSelect.options[i].value === deviceModel) {
+                    deviceSelect.value = deviceModel;
+                    loadData();
+                    return;
+                }
+            }
+            console.warn('异常设备面板：下拉框中未找到设备型号 ' + deviceModel);
+        });
     </script>
 <!-- 定位照片管理模态框 -->
 <div id="positionPhotoModal" class="position-photo-modal">
